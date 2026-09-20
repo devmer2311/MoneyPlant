@@ -1,0 +1,114 @@
+name: Android release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version increment
+        required: true
+        default: patch
+        type: choice
+        options: [patch, minor, major]
+permissions:
+  contents: write
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'chore: bump version')
+    runs-on: ubuntu-latest
+    steps:
+      # Resolve main AFTER the concurrency lock: queued releases must see the last version bump.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Avoid releasing the same production state twice
+        id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT" == "push" && "$(git log -1 --pretty=%s)" == "chore: bump version"* ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-java@v4
+        if: steps.gate.outputs.skip == 'false'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        if: steps.gate.outputs.skip == 'false'
+        with:
+          flutter-version: '3.47.2'
+          channel: stable
+          cache: true
+      - name: Calculate version from pubspec
+        if: steps.gate.outputs.skip == 'false'
+        id: version
+        env:
+          BUMP: ${{ inputs.bump || 'patch' }}
+        run: python3 tool/bump_version.py "$BUMP" --output "$GITHUB_OUTPUT"
+      - name: Configure release signing
+        if: steps.gate.outputs.skip == 'false'
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          test -n "$KEYSTORE" && test -n "$STORE_PASSWORD" && test -n "$KEY_PASSWORD" && test -n "$KEY_ALIAS" || { echo 'Configure the four Android signing secrets listed in README.md.'; exit 1; }
+          echo "$KEYSTORE" | base64 --decode > android/app/release.jks
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          def escape(value):
+              return value.replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r').replace('=', '\\=').replace(':', '\\:').replace(' ', '\\ ')
+          lines = ['storeFile=release.jks']
+          for prop, key in [('storePassword','STORE_PASSWORD'), ('keyPassword','KEY_PASSWORD'), ('keyAlias','KEY_ALIAS')]:
+              lines.append(f'{prop}={escape(os.environ[key])}')
+          Path('android/key.properties').write_text('\n'.join(lines) + '\n')
+          PY
+      - if: steps.gate.outputs.skip == 'false'
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+          python3 tool/test_version.py
+          flutter build apk --release
+      - name: Commit version and tag validated build
+        if: steps.gate.outputs.skip == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed during validation. A queued release will build the newer commit.'; exit 1; }
+          if git rev-parse "$TAG" >/dev/null 2>&1; then echo 'Tag already exists; refusing to overwrite it.'; exit 1; fi
+          git add pubspec.yaml
+          git commit -m "chore: bump version to $VERSION [skip ci]"
+          git tag "$TAG"
+          git push --atomic origin HEAD:main "$TAG"
+      - name: Publish universal APK
+        if: steps.gate.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk "money-plant-v$VERSION.apk"
+          gh release create "$TAG" "money-plant-v$VERSION.apk" --verify-tag --title "Money Plant $TAG" --generate-notes
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.gate.outputs.skip == 'false'
+        with:
+          name: release-build
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: ignore
+      - name: Clean signing material
+        if: always()
+        run: rm -f android/key.properties android/app/release.jks
