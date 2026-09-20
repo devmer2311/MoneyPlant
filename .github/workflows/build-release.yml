@@ -17,7 +17,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release:
-    if: github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'chore: bump version')
+    if: >-
+      ${{ github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'chore: bump version') }}
     runs-on: ubuntu-latest
     steps:
       # Resolve main AFTER the concurrency lock: queued releases must see the last version bump.
