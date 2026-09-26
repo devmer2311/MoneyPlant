@@ -78,3 +78,7 @@ flutter build apk --release --dart-define=MONEY_PLANT_WEBSITE_URL=https://moneyp
 ```
 
 Background update notifications target Android. Local planning docs, agent/skill files, credentials, build outputs, dependency directories and deployment caches are excluded from Git. App/site source, tests, workflow files, package lockfiles and license notices are included.
+
+### Android Kotlin compatibility
+
+AGP 9.1 currently runs with `android.builtInKotlin=false` because some bundled plugins still use KGP. `file_picker` 11 assumes built-in Kotlin whenever AGP is 9+, so the root Android build explicitly applies KGP and JVM 17 to that module. This ensures `FilePickerPlugin.kt` is compiled and available to Flutter’s generated plugin registrant. Remove this compatibility block when the dependency set is migrated together to built-in Kotlin.
