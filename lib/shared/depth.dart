@@ -1,3 +1,5 @@
+import '../core/theme/depth_colors.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -21,7 +23,8 @@ class DepthIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tint = this.tint ?? context.tokens.receive;
-    final ink = Color.lerp(tint, context.tokens.hero, .78)!;
+    final shades = DepthShades.forTint(tint, context.tokens);
+    final ink = shades.foreground;
     return Container(
       width: size,
       height: size,
@@ -30,11 +33,7 @@ class DepthIcon extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color.lerp(tint, context.tokens.highlight, .56)!,
-            tint,
-            Color.lerp(tint, ink, .12)!,
-          ],
+          colors: shades.stops,
           stops: const [0, .55, 1],
         ),
         border: Border.all(

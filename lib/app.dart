@@ -252,7 +252,7 @@ class _GardenShellState extends ConsumerState<GardenShell>
                               raised: index == i,
                               tint: index == i
                                   ? context.tokens.receive
-                                  : context.tokens.navigationInk,
+                                  : context.tokens.navigation,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -263,7 +263,7 @@ class _GardenShellState extends ConsumerState<GardenShell>
                               fontWeight: FontWeight.w600,
                               color: index == i
                                   ? context.tokens.onReceive
-                                  : context.colors.onSurfaceVariant,
+                                  : context.tokens.navigationInk,
                             ),
                           ),
                         ],

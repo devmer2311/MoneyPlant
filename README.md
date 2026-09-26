@@ -82,3 +82,9 @@ Background update notifications target Android. Local planning docs, agent/skill
 ### Android Kotlin compatibility
 
 AGP 9.1 currently runs with `android.builtInKotlin=false` because some bundled plugins still use KGP. `file_picker` 11 assumes built-in Kotlin whenever AGP is 9+, so the root Android build explicitly applies KGP and JVM 17 to that module. This ensures `FilePickerPlugin.kt` is compiled and available to Flutter’s generated plugin registrant. Remove this compatibility block when the dependency set is migrated together to built-in Kotlin.
+
+### v2.0.1
+
+- Ledger PDF export with preset dates or a custom range, beside compact statement import. CSV export remains in Settings.
+- Clearer navigation icons and selected colors across all themes, plus improved Groups & trips spacing.
+- PDF nudges offer a separate text share for chat apps that ignore attachment captions. Messages remain outside the PDF.

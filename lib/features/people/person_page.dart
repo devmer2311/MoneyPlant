@@ -308,6 +308,10 @@ class _PersonDetailsState extends ConsumerState<PersonDetails> {
   }
 }
 
+final nudgeShareProvider = Provider<Future<ShareResult> Function(ShareParams)>(
+  (ref) => SharePlus.instance.share,
+);
+
 class NudgeSheet extends ConsumerStatefulWidget {
   final Person person;
   final int amount;
@@ -326,6 +330,8 @@ class _NudgeSheetState extends ConsumerState<NudgeSheet> {
   final text = TextEditingController();
   String tone = 'Cute';
   bool attachPdf = false;
+  bool sharing = false;
+  String? sharedMessage;
   @override
   void initState() {
     super.initState();
@@ -348,6 +354,46 @@ class _NudgeSheetState extends ConsumerState<NudgeSheet> {
   void dispose() {
     text.dispose();
     super.dispose();
+  }
+
+  Future<void> shareNudge({required bool withPdf, String? message}) async {
+    final content = message ?? text.text;
+    final origin = shareOrigin(context);
+    final store = ref.read(gardenProvider);
+    setState(() => sharing = true);
+    try {
+      await perform(context, () async {
+        final result = await ref.read(nudgeShareProvider)(
+          ShareParams(
+            text: content,
+            files: withPdf
+                ? [
+                    XFile.fromData(
+                      await statementPdf(
+                        store,
+                        person: widget.split == null ? widget.person : null,
+                        split: widget.split,
+                      ),
+                      mimeType: 'application/pdf',
+                    ),
+                  ]
+                : null,
+            fileNameOverrides: withPdf ? ['MoneyPlant-Statement.pdf'] : null,
+            sharePositionOrigin: origin,
+          ),
+        );
+        if (withPdf && mounted) setState(() => sharedMessage = content);
+        if (result.status == ShareResultStatus.success) {
+          await store.change(
+            (d) =>
+                d.activity['nudge:${widget.person.id}:${DateTime.now().toIso8601String().split('T').first}'] =
+                    DateTime.now().toIso8601String(),
+          );
+        }
+      });
+    } finally {
+      if (mounted) setState(() => sharing = false);
+    }
   }
 
   @override
@@ -379,41 +425,22 @@ class _NudgeSheetState extends ConsumerState<NudgeSheet> {
         onChanged: (v) => setState(() => attachPdf = v!),
       ),
       FilledButton(
-        onPressed: () => perform(context, () async {
-          final origin = shareOrigin(context);
-          final result = await SharePlus.instance.share(
-            ShareParams(
-              text: text.text,
-              files: attachPdf
-                  ? [
-                      XFile.fromData(
-                        await statementPdf(
-                          ref.read(gardenProvider),
-                          person: widget.split == null ? widget.person : null,
-                          split: widget.split,
-                        ),
-                        mimeType: 'application/pdf',
-                      ),
-                    ]
-                  : null,
-              fileNameOverrides: attachPdf
-                  ? ['MoneyPlant-Statement.pdf']
-                  : null,
-              sharePositionOrigin: origin,
-            ),
-          );
-          if (result.status == ShareResultStatus.success) {
-            await ref
-                .read(gardenProvider)
-                .change(
-                  (d) =>
-                      d.activity['nudge:${widget.person.id}:${DateTime.now().toIso8601String().split('T').first}'] =
-                          DateTime.now().toIso8601String(),
-                );
-          }
-        }),
+        onPressed: sharing ? null : () => shareNudge(withPdf: attachPdf),
         child: const Text('Share nudge'),
       ),
+      if (sharedMessage != null) ...[
+        const SizedBox(height: 12),
+        const Text(
+          'If your chat app only sends the PDF, send the message separately to the same chat.',
+        ),
+        OutlinedButton.icon(
+          onPressed: sharing
+              ? null
+              : () => shareNudge(withPdf: false, message: sharedMessage),
+          icon: const Icon(Icons.chat_bubble_outline),
+          label: const Text('Share message separately'),
+        ),
+      ],
     ],
   );
 }

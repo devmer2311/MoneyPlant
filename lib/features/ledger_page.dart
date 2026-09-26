@@ -1,3 +1,4 @@
+import 'ledger_export.dart';
 import 'import/import_flow.dart';
 
 import 'package:flutter/material.dart';
@@ -21,6 +22,7 @@ class _LedgerPageState extends ConsumerState<LedgerPage> {
   String query = '', filter = 'All', category = 'All categories';
   DateTimeRange? range;
   bool oldest = false;
+  bool exporting = false;
   @override
   Widget build(BuildContext context) {
     final store = ref.watch(gardenProvider);
@@ -50,14 +52,47 @@ class _LedgerPageState extends ConsumerState<LedgerPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        OutlinedButton.icon(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ImportFlow()),
-          ),
-          icon: const Icon(Icons.upload_file),
-          label: const Text('Import statement'),
+        Row(
+          children: [
+            Flexible(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ImportFlow()),
+                ),
+                icon: const Icon(Icons.upload_file, size: 18),
+                label: const Text('Import statement'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                onPressed: exporting
+                    ? null
+                    : () async {
+                        setState(() => exporting = true);
+                        try {
+                          await perform(
+                            context,
+                            () => exportLedgerPdf(context, store),
+                          );
+                        } finally {
+                          if (mounted) setState(() => exporting = false);
+                        }
+                      },
+                icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                label: const Text('Export PDF'),
+              ),
+            ),
+          ],
         ),
+        const SizedBox(height: 16),
         const PageIntro(
           'Your money story.',
           'Every little thing, beautifully accounted for.',

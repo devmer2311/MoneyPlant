@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_plant/app.dart';
+import 'package:money_plant/core/design.dart';
+import 'package:money_plant/shared/widgets.dart';
 import 'package:money_plant/core/models.dart';
 import 'package:money_plant/data/garden_store.dart';
 
@@ -17,6 +19,7 @@ void main() {
     WidgetTester tester,
     Size size, {
     bool dark = false,
+    String pack = 'garden',
     double textScale = 1,
     bool populated = false,
   }) async {
@@ -25,7 +28,10 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final store = GardenStore(MemoryRepository());
-    await store.change((d) => d.theme = dark ? 'dark' : 'light');
+    await store.change((d) {
+      d.theme = dark ? 'dark' : 'light';
+      d.themePack = pack;
+    });
     if (populated) {
       final now = DateTime.now();
       await store.saveEntry(
@@ -78,9 +84,21 @@ void main() {
     }
     tester.platformDispatcher.textScaleFactorTestValue = textScale;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    for (final family in ['Outfit', 'Manrope', 'NotoSans']) {
+    for (final family in [
+      'Outfit',
+      'Manrope',
+      'NotoSans',
+      'Fredoka',
+      'SpaceGrotesk',
+      'DMSerifDisplay',
+      'Quicksand',
+    ]) {
       final loader = FontLoader(family)
-        ..addFont(rootBundle.load('assets/fonts/$family.ttf'));
+        ..addFont(
+          rootBundle.load(
+            'assets/fonts/$family${['Outfit', 'Manrope', 'NotoSans'].contains(family) ? '' : '-Regular'}.ttf',
+          ),
+        );
       await loader.load();
     }
     final icons = FontLoader('MaterialIcons')
@@ -110,6 +128,53 @@ void main() {
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull, reason: label);
         }
+      });
+    }
+  }
+  for (final pack in themePacks) {
+    for (final dark in [false, true]) {
+      testWidgets('${pack.id} narrow actions align, dark=$dark', (
+        tester,
+      ) async {
+        await launch(tester, const Size(320, 800), pack: pack.id, dark: dark);
+        await tester.tap(find.text('Splits').last);
+        await tester.pumpAndSettle();
+        final groups = tester.getRect(
+          find.widgetWithText(OutlinedButton, 'Groups & trips'),
+        );
+        final card = tester.getRect(
+          find
+              .ancestor(
+                of: find.text('To receive'),
+                matching: find.byType(Surface),
+              )
+              .first,
+        );
+        expect(card.left, closeTo(groups.left, .1));
+        expect(card.top - groups.bottom, closeTo(20, .1));
+        await tester.tap(find.text('Ledger').last);
+        await tester.pumpAndSettle();
+        final importButton = tester.getRect(
+          find.widgetWithText(OutlinedButton, 'Import statement'),
+        );
+        final exportButton = tester.getRect(
+          find.widgetWithText(OutlinedButton, 'Export PDF'),
+        );
+        expect(importButton.center.dy, closeTo(exportButton.center.dy, .1));
+        expect(exportButton.left, greaterThan(importButton.right));
+        await tester.tap(find.text('Export PDF'));
+        await tester.pumpAndSettle();
+        for (final label in [
+          'Last 30 days',
+          'Last 7 days',
+          'This month',
+          'Last month',
+          'Last 3 months',
+          'Custom range',
+        ]) {
+          expect(find.text(label), findsOneWidget);
+        }
+        expect(tester.takeException(), isNull);
       });
     }
   }

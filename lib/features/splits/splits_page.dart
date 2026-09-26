@@ -34,6 +34,7 @@ class SplitsPage extends ConsumerWidget {
           icon: const Icon(Icons.upload_file),
           label: const Text('Import settlements'),
         ),
+        const SizedBox(height: 16),
         PageIntro(
           'Good times. Fair shares.',
           'Keep the friendship. Lose the awkward maths.',
@@ -46,8 +47,15 @@ class SplitsPage extends ConsumerWidget {
             MaterialPageRoute(builder: (_) => const GroupsPage()),
           ),
           icon: const Icon(Icons.groups_outlined),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+            foregroundColor: context.tokens.navigationInk,
+            backgroundColor: context.tokens.navigation,
+            side: BorderSide(color: context.tokens.inkMuted),
+          ),
           label: const Text('Groups & trips'),
         ),
+        const SizedBox(height: 20),
         Row(
           children: [
             Expanded(
