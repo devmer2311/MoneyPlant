@@ -1,0 +1,32 @@
+---
+import { getReleases, latestRelease } from '../lib/releases.ts';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const latest = latestRelease(await getReleases());
+---
+
+<footer class="theme-fade border-t" style="border-color: color-mix(in srgb, var(--ink) 10%, transparent);">
+  <p class="container-site m-0 pt-8 text-xs text-ink-muted">
+    This site sets no cookies and runs no analytics. Your theme choice stays in your browser.
+  </p>
+  <div class="container-site flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
+    <p class="text-sm text-ink-muted">
+      Built with 💖 in India by DJ Khatri
+      {latest && (
+        <>
+          {' · '}
+          <a href={`${base}/releases/${latest.tag}`} class="font-bold no-underline hover:underline" style="color: var(--ink-muted);" data-latest-version>
+            v{latest.version}
+          </a>
+        </>
+      )}
+    </p>
+    <nav aria-label="Footer" class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-bold">
+      <a class="text-ink-muted hover:text-ink transition-colors" href={`${base}/releases`}>Releases</a>
+      <a class="text-ink-muted hover:text-ink transition-colors" href={`${base}/install`}>Install</a>
+      <a class="text-ink-muted hover:text-ink transition-colors" href={`${base}/roadmap`}>Roadmap</a>
+      <a class="text-ink-muted hover:text-ink transition-colors" href="https://github.com/devmer2311/MoneyPlant" rel="noopener">GitHub</a>
+      <a class="text-ink-muted hover:text-ink transition-colors" href={`${base}/releases.xml`}>RSS</a>
+    </nav>
+  </div>
+</footer>

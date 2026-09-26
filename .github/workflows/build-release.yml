@@ -12,6 +12,7 @@ on:
         options: [patch, minor, major]
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: production-release
   cancel-in-progress: false
@@ -52,7 +53,13 @@ jobs:
         id: version
         env:
           BUMP: ${{ inputs.bump || 'patch' }}
-        run: python3 tool/bump_version.py "$BUMP" --output "$GITHUB_OUTPUT"
+        run: |
+          CURRENT_TAG="v$(sed -n 's/^version: \([^+]*\)+.*/\1/p' pubspec.yaml)"
+          if git rev-parse --verify "refs/tags/$CURRENT_TAG" >/dev/null 2>&1; then
+            python3 tool/bump_version.py "$BUMP" --output "$GITHUB_OUTPUT"
+          else
+            python3 tool/bump_version.py current --output "$GITHUB_OUTPUT"
+          fi
       - name: Configure release signing
         if: steps.gate.outputs.skip == 'false'
         env:
@@ -79,7 +86,7 @@ jobs:
           flutter analyze
           flutter test
           python3 tool/test_version.py
-          flutter build apk --release
+          flutter build apk --release --dart-define=MONEY_PLANT_WEBSITE_URL=https://moneyplantbydev.pages.dev
       - name: Commit version and tag validated build
         if: steps.gate.outputs.skip == 'false'
         env:
@@ -92,7 +99,9 @@ jobs:
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed during validation. A queued release will build the newer commit.'; exit 1; }
           if git rev-parse "$TAG" >/dev/null 2>&1; then echo 'Tag already exists; refusing to overwrite it.'; exit 1; fi
           git add pubspec.yaml
-          git commit -m "chore: bump version to $VERSION [skip ci]"
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: bump version to $VERSION [skip ci]"
+          fi
           git tag "$TAG"
           git push --atomic origin HEAD:main "$TAG"
       - name: Publish universal APK
@@ -103,7 +112,15 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk "money-plant-v$VERSION.apk"
-          gh release create "$TAG" "money-plant-v$VERSION.apk" --verify-tag --title "Money Plant $TAG" --generate-notes
+          cp build/app/outputs/flutter-apk/app-release.apk money-plant.apk
+          sha256sum "money-plant-v$VERSION.apk" > "money-plant-v$VERSION.apk.sha256"
+          gh release create "$TAG" "money-plant-v$VERSION.apk" money-plant.apk "money-plant-v$VERSION.apk.sha256" --verify-tag --title "Money Plant $TAG" --generate-notes
+      - name: Trigger site deploy
+        if: steps.gate.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Releases created with GITHUB_TOKEN don't fire `on: release`, so dispatch the site workflow directly.
+        run: gh workflow run site.yml --ref main || echo 'site.yml not found yet; skipping'
       - uses: actions/upload-artifact@v4
         if: always() && steps.gate.outputs.skip == 'false'
         with:

@@ -56,7 +56,7 @@ class GardenNoticeHostState extends State<GardenNoticeHost> {
             child: AnimatedSwitcher(
               duration: MediaQuery.disableAnimationsOf(context)
                   ? Duration.zero
-                  : Palette.motion,
+                  : GardenMotion.duration,
               transitionBuilder: (child, animation) => FadeTransition(
                 opacity: animation,
                 child: SlideTransition(
@@ -74,7 +74,9 @@ class GardenNoticeHostState extends State<GardenNoticeHost> {
                       liveRegion: true,
                       child: Material(
                         elevation: 16,
-                        shadowColor: Colors.black.withValues(alpha: .22),
+                        shadowColor: context.tokens.shadow.withValues(
+                          alpha: .22,
+                        ),
                         color: context.colors.surface,
                         borderRadius: BorderRadius.circular(24),
                         child: Padding(
@@ -86,8 +88,8 @@ class GardenNoticeHostState extends State<GardenNoticeHost> {
                                     ? Icons.priority_high_rounded
                                     : Icons.check_rounded,
                                 tint: error
-                                    ? const Color(0xFFF6C2AE)
-                                    : Palette.lime,
+                                    ? context.tokens.expenseAccent
+                                    : context.tokens.receive,
                                 size: 36,
                               ),
                               const SizedBox(width: 16),

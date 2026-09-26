@@ -215,10 +215,12 @@ void main() {
       await store.recordPayment('bill', 'self', 1000, DateTime(2026, 1, 2));
       expect(store.owed, 2334);
       expect(store.balance, -1000);
-      await expectLater(
-        store.recordPayment('bill', 'b', 10, DateTime.now()),
-        throwsFormatException,
-      );
+      await store.recordPayment('bill', 'b', 10, DateTime.now());
+      expect(store.remaining(bill(payer: 'a'), 'b'), 3323);
+      expect(
+        store.balance,
+        -1000,
+      ); // Third-party payment has no personal cash movement.
     },
   );
   test('split message contains computed amounts and payment state', () async {

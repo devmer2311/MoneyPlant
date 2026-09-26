@@ -1,0 +1,259 @@
+---
+// Site-wide delight layer: command palette (Ctrl/⌘K), keyboard shortcuts,
+// leaf cursor, scroll-progress vine, and the money-rain Easter egg.
+import { getReleases, STABLE_APK_URL } from '../../lib/releases.ts';
+import { themePacks } from '../../lib/themes.ts';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const releases = await getReleases();
+
+type Cmd = { label: string; hint: string; action: string; value: string };
+const commands: Cmd[] = [
+  { label: '⬇ Download the latest APK', hint: 'D', action: 'download', value: STABLE_APK_URL },
+  { label: '🏠 Home', hint: '', action: 'go', value: `${base}/` },
+  { label: '🌿 Releases', hint: 'R', action: 'go', value: `${base}/releases` },
+  { label: '📲 Install guide', hint: '', action: 'go', value: `${base}/install` },
+  { label: '🗺️ Roadmap', hint: '', action: 'go', value: `${base}/roadmap` },
+  ...themePacks.map((p) => ({ label: `${p.emoji} Theme: ${p.name}`, hint: '', action: 'theme', value: p.id })),
+  ...releases.map((r) => ({ label: `🏷️ v${r.version}`, hint: '', action: 'go', value: `${base}/releases/${r.tag}` })),
+];
+---
+
+<div class="scroll-vine" aria-hidden="true"></div>
+<canvas id="rain-canvas" class="pointer-events-none fixed inset-0 z-[65] size-full" aria-hidden="true"></canvas>
+<div id="leaf-cursor" class="pointer-events-none fixed z-[64] hidden text-xl" aria-hidden="true" style="translate: -50% -50%; transition: scale 0.15s;">🍃</div>
+
+<div id="palette-root" class="fixed inset-0 z-50 hidden" role="presentation">
+  <div id="palette-backdrop" class="absolute inset-0" style="background: color-mix(in srgb, black 50%, transparent);"></div>
+  <div
+    id="palette"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Command palette"
+    class="absolute inset-x-4 top-[15vh] mx-auto max-w-lg overflow-hidden rounded-3xl border"
+    style="background: var(--surface); border-color: color-mix(in srgb, var(--ink) 14%, transparent); box-shadow: 0 30px 80px color-mix(in srgb, black 40%, transparent);"
+  >
+    <input
+      id="palette-input"
+      type="text"
+      role="combobox"
+      aria-expanded="true"
+      aria-controls="palette-list"
+      aria-activedescendant=""
+      placeholder="Jump to a version, page or theme… or type download"
+      name="command"
+      autocomplete="off"
+      spellcheck="false"
+      class="w-full border-b bg-transparent px-5 py-4 text-lg outline-none"
+      style="border-color: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink);"
+    />
+    <ul id="palette-list" role="listbox" aria-label="Commands" class="m-0 max-h-72 list-none overflow-y-auto p-2" style="overscroll-behavior: contain;">
+      {commands.map((c, i) => (
+        <li
+          id={`cmd-${i}`}
+          role="option"
+          aria-selected="false"
+          data-action={c.action}
+          data-value={c.value}
+          data-label={c.label.toLowerCase()}
+          class="flex cursor-pointer items-center justify-between rounded-xl px-4 py-2.5 font-bold"
+        >
+          {c.label}
+          {c.hint && <kbd class="rounded-md border px-1.5 text-xs" style="border-color: color-mix(in srgb, var(--ink) 20%, transparent);">{c.hint}</kbd>}
+        </li>
+      ))}
+      <li id="palette-empty" class="hidden px-4 py-3 text-sm text-ink-muted">Nothing found 🥀</li>
+    </ul>
+  </div>
+</div>
+
+<div id="shortcuts-root" class="fixed inset-0 z-50 hidden" role="presentation">
+  <div id="shortcuts-backdrop" class="absolute inset-0" style="background: color-mix(in srgb, black 50%, transparent);"></div>
+  <div role="dialog" aria-modal="true" aria-labelledby="shortcuts-title" class="absolute inset-x-4 top-[22vh] mx-auto max-w-sm rounded-3xl border p-6" style="background: var(--surface); border-color: color-mix(in srgb, var(--ink) 14%, transparent);">
+    <h2 id="shortcuts-title" class="m-0 text-xl">Keyboard shortcuts</h2>
+    <dl class="mb-0 mt-4 grid grid-cols-[auto_1fr] gap-x-5 gap-y-2 text-sm">
+      {[['Ctrl / ⌘ K', 'Command palette'], ['D', 'Download the APK'], ['R', 'Releases'], ['T', 'Next theme'], ['?', 'This overlay'], ['Esc', 'Close things']].map(([k, v]) => (
+        <>
+          <dt><kbd class="rounded-md border px-1.5 py-0.5 font-bold" style="border-color: color-mix(in srgb, var(--ink) 20%, transparent);">{k}</kbd></dt>
+          <dd class="m-0 text-ink-muted">{v}</dd>
+        </>
+      ))}
+    </dl>
+  </div>
+</div>
+
+<style>
+  @media (prefers-reduced-motion: no-preference) {
+    .scroll-vine {
+      position: fixed;
+      inset: 0 auto auto 0;
+      height: 3px;
+      width: 100%;
+      z-index: 61;
+      transform-origin: left;
+      background: linear-gradient(90deg, var(--leaf-shade), var(--leaf-mid), var(--brand));
+      animation: vine-grow linear both;
+      animation-timeline: scroll(root);
+    }
+  }
+  @keyframes vine-grow {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  #palette-list [role='option'][aria-selected='true'] {
+    background: var(--surface-alt);
+  }
+  .leaf-sparkle {
+    position: fixed;
+    z-index: 63;
+    pointer-events: none;
+    font-size: 10px;
+    animation: sparkle-fade 0.7s ease-out forwards;
+  }
+  @keyframes sparkle-fade {
+    to { opacity: 0; transform: translateY(8px) scale(0.4); }
+  }
+</style>
+
+<script>
+  import { rainMoney } from '../../lib/coins';
+  import { currentTheme, nextTheme, setTheme } from '../../lib/theme';
+
+  // ClientRouter replaces the DOM on navigation, so element-level wiring runs on
+  // every astro:page-load while document-level listeners register exactly once
+  // and look elements up lazily.
+  let selected = 0;
+
+  const el = {
+    root: () => document.getElementById('palette-root'),
+    input: () => document.getElementById('palette-input') as HTMLInputElement | null,
+    options: () => [...document.querySelectorAll<HTMLElement>('#palette-list [role="option"]')],
+    empty: () => document.getElementById('palette-empty'),
+    shortcuts: () => document.getElementById('shortcuts-root'),
+    rain: () => document.getElementById('rain-canvas') as HTMLCanvasElement | null,
+  };
+
+  const visibleOptions = () => el.options().filter((o) => !o.hidden);
+  const paint = () => {
+    const vis = visibleOptions();
+    for (const o of el.options()) o.setAttribute('aria-selected', 'false');
+    vis[selected]?.setAttribute('aria-selected', 'true');
+    el.input()?.setAttribute('aria-activedescendant', vis[selected]?.id ?? '');
+    el.empty()?.classList.toggle('hidden', vis.length > 0);
+  };
+  const filter = () => {
+    const q = el.input()?.value.toLowerCase().trim() ?? '';
+    for (const o of el.options()) o.hidden = !!q && !o.dataset.label!.includes(q);
+    selected = 0;
+    paint();
+  };
+  const openPalette = () => {
+    const input = el.input();
+    el.root()?.classList.remove('hidden');
+    if (input) input.value = '';
+    filter();
+    input?.focus();
+  };
+  const closePalette = () => el.root()?.classList.add('hidden');
+  const run = (o: HTMLElement | undefined) => {
+    if (!o) return;
+    closePalette();
+    const value = o.dataset.value!;
+    if (o.dataset.action === 'theme') setTheme(value, currentTheme().mode, { x: innerWidth / 2, y: innerHeight / 2 });
+    else location.assign(value);
+  };
+
+  function bindPage() {
+    el.input()?.addEventListener('input', filter);
+    el.input()?.addEventListener('keydown', (e) => {
+      const vis = visibleOptions();
+      if (e.key === 'ArrowDown') { selected = Math.min(selected + 1, vis.length - 1); paint(); e.preventDefault(); }
+      if (e.key === 'ArrowUp') { selected = Math.max(selected - 1, 0); paint(); e.preventDefault(); }
+      if (e.key === 'Enter') run(vis[selected]);
+    });
+    for (const o of el.options()) o.addEventListener('click', () => run(o));
+    document.getElementById('palette-backdrop')?.addEventListener('click', closePalette);
+    document.getElementById('shortcuts-backdrop')?.addEventListener('click', () => el.shortcuts()?.classList.add('hidden'));
+  }
+
+  function bindDocument() {
+    const typing = () =>
+      document.activeElement instanceof HTMLInputElement ||
+      document.activeElement instanceof HTMLTextAreaElement ||
+      document.activeElement instanceof HTMLSelectElement;
+    let buffer = '';
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        el.root()?.classList.contains('hidden') ? openPalette() : closePalette();
+        return;
+      }
+      if (e.key === 'Escape') {
+        closePalette();
+        el.shortcuts()?.classList.add('hidden');
+        return;
+      }
+      if (typing() || e.ctrlKey || e.metaKey || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key === 'd') document.querySelector<HTMLAnchorElement>('[data-latest-apk]')?.click();
+      if (key === 'r') {
+        const link = document.querySelector<HTMLAnchorElement>('a[href$="/releases"]');
+        if (link) location.assign(link.href);
+      }
+      if (key === 't') setTheme(nextTheme(), currentTheme().mode, { x: innerWidth / 2, y: 60 });
+      if (e.key === '?') el.shortcuts()?.classList.toggle('hidden');
+      buffer = (buffer + key).slice(-5);
+      if (buffer === 'paisa' && el.rain()) void rainMoney(el.rain()!);
+    });
+
+    // Easter egg: 5 quick clicks on the logo make it rain.
+    let clicks = 0;
+    let clickTimer: ReturnType<typeof setTimeout>;
+    document.addEventListener('click', (e) => {
+      const logo = (e.target as HTMLElement).closest<HTMLAnchorElement>('#site-logo');
+      if (!logo) return;
+      clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => (clicks = 0), 1200);
+      clicks++;
+      if (clicks >= 3) e.preventDefault(); // rapid clickers are hunting the egg, stop navigating
+      if (clicks >= 5) {
+        clicks = 0;
+        if (el.rain()) void rainMoney(el.rain()!);
+      }
+    });
+
+    // Leaf cursor with sparkle trail: fine pointers, motion allowed.
+    if (matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      let sparkleAt = 0;
+      document.addEventListener('pointermove', (e) => {
+        const leaf = document.getElementById('leaf-cursor');
+        if (!leaf) return;
+        leaf.classList.remove('hidden');
+        leaf.style.left = `${e.clientX + 14}px`;
+        leaf.style.top = `${e.clientY + 16}px`;
+        const interactive = (e.target as HTMLElement).closest('a, button, input, select, summary, [role="option"]');
+        leaf.style.scale = interactive ? '1.6' : '1';
+        if (performance.now() - sparkleAt > 120) {
+          sparkleAt = performance.now();
+          const s = document.createElement('span');
+          s.className = 'leaf-sparkle';
+          s.textContent = '✦';
+          s.style.color = 'var(--brand)';
+          s.style.left = `${e.clientX + 6}px`;
+          s.style.top = `${e.clientY + 10}px`;
+          document.body.appendChild(s);
+          setTimeout(() => s.remove(), 700);
+        }
+      });
+    }
+  }
+
+  let docBound = false;
+  document.addEventListener('astro:page-load', () => {
+    bindPage();
+    if (!docBound) {
+      docBound = true;
+      bindDocument();
+    }
+  });
+</script>

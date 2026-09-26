@@ -1,0 +1,126 @@
+---
+// Bottom sheet that opens after a download starts: 3 friendly install steps,
+// the SHA-256 (when the release ships one), and a link to the full guide.
+interface Props {
+  sha256?: string | undefined;
+  apkName?: string | undefined;
+}
+const { sha256, apkName } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<div id="drawer-root" class="pointer-events-none fixed inset-0 z-50" hidden>
+  <div id="drawer-backdrop" class="absolute inset-0 opacity-0 transition-opacity duration-300" style="background: color-mix(in srgb, black 55%, transparent);"></div>
+  <div
+    id="install-drawer"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="drawer-title"
+    class="absolute inset-x-0 bottom-0 mx-auto max-h-[85dvh] max-w-xl translate-y-full overflow-y-auto rounded-t-[var(--radius)] p-6 pb-8 transition-transform duration-400 ease-out md:p-8"
+    style="background: var(--surface); box-shadow: 0 -20px 60px color-mix(in srgb, black 30%, transparent); overscroll-behavior: contain;"
+  >
+    <div class="mx-auto mb-5 h-1.5 w-12 rounded-full" style="background: color-mix(in srgb, var(--ink) 20%, transparent);" aria-hidden="true"></div>
+    <div class="mb-5 flex items-start justify-between gap-4">
+      <h2 id="drawer-title" class="m-0 text-2xl">Your seed is on its way 🌱</h2>
+      <button id="drawer-close" type="button" aria-label="Close install guide" class="grid size-9 shrink-0 place-items-center rounded-full text-lg" style="background: var(--surface-alt);">✕</button>
+    </div>
+
+    <ol class="m-0 grid list-none gap-4 p-0">
+      <li class="drawer-step flex items-center gap-4 rounded-2xl p-4" style="background: var(--surface-alt);">
+        <span class="grid size-11 shrink-0 place-items-center rounded-full text-xl" style="background: var(--brand); color: var(--on-brand);">📂</span>
+        <div>
+          <p class="m-0 font-bold">Open the downloaded file</p>
+          <p class="m-0 text-sm text-ink-muted">Pull down your notifications and tap the APK.</p>
+        </div>
+      </li>
+      <li class="drawer-step flex items-center gap-4 rounded-2xl p-4" style="background: var(--surface-alt);">
+        <span class="grid size-11 shrink-0 place-items-center rounded-full" aria-hidden="true">
+          <span class="drawer-toggle relative inline-block h-6 w-11 rounded-full transition-colors duration-500" style="background: color-mix(in srgb, var(--ink) 25%, transparent);">
+            <span class="drawer-knob absolute left-0.5 top-0.5 size-5 rounded-full bg-white transition-transform duration-500"></span>
+          </span>
+        </span>
+        <div>
+          <p class="m-0 font-bold">Allow "Install unknown apps"</p>
+          <p class="m-0 text-sm text-ink-muted">Android asks once for your browser. Flip it on, it's your phone.</p>
+        </div>
+      </li>
+      <li class="drawer-step flex items-center gap-4 rounded-2xl p-4" style="background: var(--surface-alt);">
+        <span class="grid size-11 shrink-0 place-items-center rounded-full text-xl" style="background: var(--receive); color: var(--on-receive);">🌱</span>
+        <div>
+          <p class="m-0 font-bold">Tap Install and grow</p>
+          <p class="m-0 text-sm text-ink-muted">Open Money Plant and plant your first expense.</p>
+        </div>
+      </li>
+    </ol>
+
+    {sha256 && (
+      <div class="mt-5 rounded-2xl border p-4" style="border-color: color-mix(in srgb, var(--ink) 12%, transparent);">
+        <p class="m-0 mb-1 text-sm font-bold">Verify your download</p>
+        <p class="m-0 flex items-center gap-2">
+          <code class="min-w-0 flex-1 truncate text-xs text-ink-muted" title={`SHA-256 of ${apkName}`}>{sha256}</code>
+          <button type="button" class="copy-sha shrink-0 rounded-full px-3 py-1 text-xs font-bold" style="background: var(--surface-alt);" data-sha={sha256}>Copy</button>
+        </p>
+      </div>
+    )}
+
+    <a href={`${base}/install`} class="mt-5 inline-block text-sm font-bold underline" style="color: var(--brand);">
+      Full install guide with troubleshooting →
+    </a>
+  </div>
+</div>
+
+<script>
+  function init() {
+    const root = document.getElementById('drawer-root');
+    const drawer = document.getElementById('install-drawer');
+    const backdrop = document.getElementById('drawer-backdrop');
+    const closeBtn = document.getElementById('drawer-close');
+    if (!root || !drawer || !backdrop || !closeBtn) return;
+    let lastFocus: HTMLElement | null = null;
+
+    const open = () => {
+      lastFocus = document.activeElement as HTMLElement;
+      root.hidden = false;
+      root.classList.remove('pointer-events-none');
+      requestAnimationFrame(() => {
+        backdrop.style.opacity = '1';
+        drawer.style.translate = '0 0';
+        // Animate the "unknown apps" toggle flipping on.
+        setTimeout(() => {
+          const toggle = drawer.querySelector<HTMLElement>('.drawer-toggle');
+          const knob = drawer.querySelector<HTMLElement>('.drawer-knob');
+          if (toggle) toggle.style.background = 'var(--brand)';
+          if (knob) knob.style.transform = 'translateX(20px)';
+        }, 700);
+      });
+      closeBtn.focus();
+    };
+    const close = () => {
+      backdrop.style.opacity = '0';
+      drawer.style.translate = '';
+      setTimeout(() => {
+        root.hidden = true;
+        root.classList.add('pointer-events-none');
+      }, 350);
+      lastFocus?.focus();
+    };
+
+    window.addEventListener('mp:download', open);
+    closeBtn.addEventListener('click', close);
+    backdrop.addEventListener('click', close);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !root.hidden) close();
+    });
+    drawer.querySelector('.copy-sha')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      try {
+        await navigator.clipboard.writeText(btn.dataset.sha ?? '');
+        btn.textContent = 'Copied ✓';
+      } catch {
+        btn.textContent = 'Select it manually';
+      }
+      setTimeout(() => (btn.textContent = 'Copy'), 2500);
+    });
+  }
+  document.addEventListener('astro:page-load', init);
+</script>

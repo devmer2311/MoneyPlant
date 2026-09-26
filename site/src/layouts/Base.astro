@@ -1,0 +1,80 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import '../styles/global.css';
+import manropeBold from '../assets/fonts/Manrope-Bold.woff2?url';
+import outfitBold from '../assets/fonts/Outfit-Bold.woff2?url';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import Delight from '../components/ui/Delight.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;
+  noChrome?: boolean;
+}
+const { title, description, ogImage, noChrome = false } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const og = ogImage ?? `${base}/og/home.png`;
+---
+
+<!doctype html>
+<html lang="en" data-theme="garden" data-mode="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111C17" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
+    <link rel="manifest" href={`${base}/manifest.webmanifest`} />
+    <link rel="alternate" type="application/rss+xml" title="Money Plant releases" href={`${base}/releases.xml`} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL(og, Astro.site)} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preload" href={outfitBold} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={manropeBold} as="font" type="font/woff2" crossorigin />
+    <script is:inline>
+      // Apply the persisted theme before first paint so there is no flash.
+      (function () {
+        var t = 'garden', m = 'dark';
+        try {
+          var s = (localStorage.getItem('mp-theme') || '').split(':');
+          if (['garden', 'sakura', 'neon', 'mango', 'ocean'].indexOf(s[0]) >= 0) t = s[0];
+          if (s[1] === 'light' || s[1] === 'dark') m = s[1];
+        } catch (e) {}
+        var d = document.documentElement;
+        d.dataset.theme = t;
+        d.dataset.mode = m;
+      })();
+    </script>
+    <ClientRouter />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    {!noChrome && <SiteHeader />}
+    <main id="main">
+      <slot />
+    </main>
+    {!noChrome && <SiteFooter />}
+    <Delight />
+    <div class="grain" aria-hidden="true"></div>
+    <script>
+      import { initScroll } from '../lib/scroll';
+      import { storedTheme } from '../lib/theme';
+
+      document.addEventListener('astro:page-load', initScroll);
+      // ClientRouter swaps <html> attributes on navigation; reapply the persisted theme.
+      document.addEventListener('astro:after-swap', () => {
+        const { theme, mode } = storedTheme();
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.mode = mode;
+      });
+    </script>
+  </body>
+</html>

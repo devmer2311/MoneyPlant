@@ -1,0 +1,45 @@
+---
+// Five glowing orbs that re-theme the entire site with a colour wipe from the
+// click point. The phone mock follows via the mp:theme event.
+import { themePacks } from '../../lib/themes.ts';
+---
+
+<div class="flex flex-col items-center gap-3">
+  <div class="flex items-center gap-4" role="group" aria-label="Try a site theme">
+    {themePacks.map((pack) => (
+      <button
+        type="button"
+        class="theme-orb size-9 rounded-full transition-transform duration-200 hover:scale-125 focus-visible:scale-125"
+        style={`background: radial-gradient(circle at 32% 30%, ${pack.light.brand}, ${pack.dark.brand}); box-shadow: 0 0 18px color-mix(in srgb, ${pack.dark.brand === '#0E0E1A' ? pack.dark.receive : pack.dark.brand} 65%, transparent);`}
+        data-orb={pack.id}
+        aria-label={`${pack.name} theme`}
+        title={`${pack.emoji} ${pack.name}`}
+      ></button>
+    ))}
+  </div>
+  <p class="m-0 text-sm text-ink-muted">5 themes. One tap. Also on this website.</p>
+</div>
+
+<script>
+  import { currentTheme, setTheme } from '../../lib/theme';
+
+  function init() {
+    const mark = () => {
+      const { theme } = currentTheme();
+      for (const orb of document.querySelectorAll<HTMLElement>('.theme-orb')) {
+        const active = orb.dataset.orb === theme;
+        orb.style.outline = active ? '2px solid var(--ink)' : 'none';
+        orb.style.outlineOffset = '3px';
+        orb.setAttribute('aria-pressed', String(active));
+      }
+    };
+    for (const orb of document.querySelectorAll<HTMLElement>('.theme-orb')) {
+      orb.addEventListener('click', (e) => {
+        setTheme(orb.dataset.orb!, currentTheme().mode, { x: e.clientX, y: e.clientY });
+      });
+    }
+    window.addEventListener('mp:theme', mark);
+    mark();
+  }
+  document.addEventListener('astro:page-load', init);
+</script>

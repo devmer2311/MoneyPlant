@@ -1,0 +1,98 @@
+---
+// Asymmetric hero: kinetic headline left, 3D phone right (overlapping), trust row.
+import type { Release } from '../../lib/releases.ts';
+import { formatSize, relativeTime } from '../../lib/releases.ts';
+import PhoneMock from './PhoneMock.astro';
+import SeedButton from './SeedButton.astro';
+import ThemeOrbs from './ThemeOrbs.astro';
+
+interface Props {
+  latest: Release;
+}
+const { latest } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const trust = ['Free', 'No account', 'No ads', 'Data stays on your phone'];
+---
+
+<section class="relative overflow-x-clip !pt-10 md:!pt-14">
+  <div class="glow left-[-10%] top-[-20%] size-[38rem]" aria-hidden="true"></div>
+  <div class="container-site grid items-center gap-12 lg:grid-cols-12">
+    <div class="relative z-[2] lg:col-span-7">
+      <h1 class="m-0" style="font-size: clamp(3.4rem, 9vw, 8.5rem); letter-spacing: -0.04em; line-height: 0.95;">
+        <span class="hero-swap"><span id="hero-verb">Grow</span><span class="sizer" aria-hidden="true">Split</span><span class="sizer" aria-hidden="true">Lock</span></span>
+        your<br />
+        <span class="hero-swap" style="color: var(--brand);"><span id="hero-noun">money.</span><span class="sizer" aria-hidden="true">bills.</span><span class="sizer" aria-hidden="true">vault.</span></span>
+      </h1>
+      <p class="mt-6 max-w-[46ch] text-lg text-ink-muted">
+        A playful, private expense tracker and bill splitter for Android. Everything stays on your phone.
+      </p>
+      <div class="mt-8 flex flex-wrap items-center gap-6">
+        <SeedButton
+          version={latest.version}
+          sizeLabel={latest.apk ? formatSize(latest.apk.size) : ''}
+          publishedAt={latest.publishedAt}
+          relativeLabel={relativeTime(latest.publishedAt)}
+        />
+        <a href={`${base}/releases`} class="font-bold underline-offset-4 hover:underline" style="color: var(--ink);">
+          See all releases →
+        </a>
+      </div>
+    </div>
+
+    <div class="relative lg:col-span-5 lg:-ml-10">
+      <PhoneMock />
+      <div class="mt-8">
+        <ThemeOrbs />
+      </div>
+    </div>
+  </div>
+
+  <ul class="container-site mt-14 flex list-none flex-wrap items-center gap-x-3 gap-y-2 p-0 text-sm font-bold text-ink-muted">
+    {trust.map((t) => (
+      <li class="rounded-full border px-4 py-1.5" style="border-color: color-mix(in srgb, var(--ink) 14%, transparent);">{t}</li>
+    ))}
+    <li>
+      <a href="https://github.com/devmer2311/MoneyPlant" rel="noopener" class="inline-block rounded-full border px-4 py-1.5 no-underline hover:underline" style="border-color: color-mix(in srgb, var(--ink) 14%, transparent); color: var(--ink-muted);">
+        Open on GitHub ★
+      </a>
+    </li>
+  </ul>
+</section>
+
+<style>
+  /* The cycling words reserve the width of their widest variant: zero layout shift. */
+  .hero-swap {
+    display: inline-grid;
+  }
+  .hero-swap > * {
+    grid-area: 1 / 1;
+  }
+  .hero-swap .sizer {
+    visibility: hidden;
+  }
+</style>
+
+<script>
+  import { scrambleTo } from '../../lib/scramble';
+
+  const PHRASES: [string, string][] = [
+    ['Grow', 'money.'],
+    ['Split', 'bills.'],
+    ['Lock', 'vault.'],
+  ];
+
+  function init() {
+    const verb = document.getElementById('hero-verb');
+    const noun = document.getElementById('hero-noun');
+    if (!verb || !noun) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let i = 0;
+    setInterval(() => {
+      if (document.hidden) return;
+      i = (i + 1) % PHRASES.length;
+      void scrambleTo(verb, PHRASES[i]![0]);
+      void scrambleTo(noun, PHRASES[i]![1]);
+    }, 3400);
+  }
+  document.addEventListener('astro:page-load', init);
+</script>

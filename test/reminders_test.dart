@@ -166,22 +166,19 @@ void main() {
     expect(nextBudgetWarning(1100, 1000, 100), 0);
     expect(nextBudgetWarning(1100, 0, 0), 0);
   });
-  test(
-    'Budget spending excludes income, reimbursements, future and other months',
-    () {
-      expect(
-        monthlySpending([
-          entry(100),
-          entry(200, kind: 'settlement'),
-          entry(500, kind: 'income'),
-          entry(400, kind: 'reimbursement'),
-          entry(999, date: DateTime(2026, 9, 21)),
-          entry(999, date: DateTime(2026, 8, 20)),
-        ], now),
-        300,
-      );
-    },
-  );
+  test('Budget spending excludes settlements, income, reimbursements, future and other months', () {
+    expect(
+      monthlySpending([
+        entry(100),
+        entry(200, kind: 'settlement'),
+        entry(500, kind: 'income'),
+        entry(400, kind: 'reimbursement'),
+        entry(999, date: DateTime(2026, 9, 21)),
+        entry(999, date: DateTime(2026, 8, 20)),
+      ], now),
+      100,
+    );
+  });
   test('Preferences reject invalid times and stay off by default', () {
     final p = ReminderPreferences.fromJson({
       'dailyMinute': -5,
@@ -338,17 +335,20 @@ void main() {
     });
   }
   testWidgets(
-    'Launch animation ends after 2.6 seconds and does not replay on rebuild',
+    'Launch animation ends within 1.5 seconds and does not replay on rebuild',
     (tester) async {
       Widget app() => MaterialApp(
         theme: gardenTheme(Brightness.light),
         home: const LaunchExperience(child: Text('Garden ready')),
       );
       await tester.pumpWidget(app());
-      expect(find.text('Skip intro'), findsOneWidget);
+      expect(find.text('Skip intro'), findsNothing);
       await tester.pump(const Duration(milliseconds: 1300));
-      expect(find.text('Garden ready'), findsNothing);
-      await tester.pump(const Duration(milliseconds: 1400));
+      expect(
+        find.text('Garden ready'),
+        findsOneWidget,
+      ); // Shell is built underneath the intro.
+      await tester.pump(const Duration(milliseconds: 200));
       expect(find.text('Garden ready'), findsOneWidget);
       await tester.pumpWidget(app());
       expect(find.text('Skip intro'), findsNothing);
@@ -360,7 +360,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: const LaunchExperience(child: Text('Garden ready'))),
     );
-    await tester.tap(find.text('Skip intro'));
+    await tester.tapAt(const Offset(200, 200));
     await tester.pump();
     expect(find.text('Garden ready'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());

@@ -1,7 +1,7 @@
 name: money_plant
 description: "Your private money garden. Track, plan, split, and grow."
 publish_to: 'none'
-version: 1.0.1+2
+version: 2.0.0+3
 
 environment:
   sdk: ^3.13.2
@@ -21,7 +21,17 @@ dependencies:
   flutter_local_notifications: ^22.3.1
   flutter_timezone: ^5.1.0
   timezone: ^0.11.1
+  barcode_widget: ^2.0.4
+  file_picker: ^11.0.3
+  csv: ^8.0.0
+  excel: ^4.0.6
+  local_auth: ^3.0.2
+  syncfusion_flutter_pdf: 33.2.13
   path_provider: ^2.1.6
+  http: 1.6.0
+  url_launcher: 6.3.2
+  workmanager: 0.10.10
+  pub_semver: 2.2.0
 
 dev_dependencies:
   flutter_test:
@@ -32,13 +42,39 @@ flutter:
   uses-material-design: true
   assets:
     - assets/notifications/garden-reminder.png
+    - assets/fonts/
+    - assets/pdf/
   fonts:
     - family: Outfit
       fonts:
-        - asset: assets/fonts/Outfit.ttf
+        - asset: assets/fonts/Outfit-Regular.ttf
+        - asset: assets/fonts/Outfit-Bold.ttf
+          weight: 700
     - family: Manrope
       fonts:
-        - asset: assets/fonts/Manrope.ttf
+        - asset: assets/fonts/Manrope-Regular.ttf
+        - asset: assets/fonts/Manrope-Bold.ttf
+          weight: 700
     - family: NotoSans
       fonts:
         - asset: assets/fonts/NotoSans.ttf
+    - family: Fredoka
+      fonts:
+        - asset: assets/fonts/Fredoka-Regular.ttf
+        - asset: assets/fonts/Fredoka-Bold.ttf
+          weight: 700
+    - family: SpaceGrotesk
+      fonts:
+        - asset: assets/fonts/SpaceGrotesk-Regular.ttf
+        - asset: assets/fonts/SpaceGrotesk-Bold.ttf
+          weight: 700
+    - family: DMSerifDisplay
+      fonts:
+        - asset: assets/fonts/DMSerifDisplay-Regular.ttf
+        - asset: assets/fonts/DMSerifDisplay-Bold.ttf
+          weight: 700
+    - family: Quicksand
+      fonts:
+        - asset: assets/fonts/Quicksand-Regular.ttf
+        - asset: assets/fonts/Quicksand-Bold.ttf
+          weight: 700

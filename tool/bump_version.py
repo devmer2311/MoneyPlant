@@ -9,6 +9,8 @@ def bump(current: str, kind: str) -> str:
     if not match:
         raise ValueError("Expected MAJOR.MINOR.PATCH+BUILD in pubspec.yaml")
     major, minor, patch, build = map(int, match.groups())
+    if kind == "current":
+        return current
     if kind == "major":
         major, minor, patch = major + 1, 0, 0
     elif kind == "minor":
@@ -22,7 +24,7 @@ def bump(current: str, kind: str) -> str:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("kind", choices=["patch", "minor", "major"])
+    parser.add_argument("kind", choices=["patch", "minor", "major", "current"])
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     pubspec = Path("pubspec.yaml")

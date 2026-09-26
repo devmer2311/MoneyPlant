@@ -1,3 +1,5 @@
+import '../core/recurring.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,9 @@ import 'package:intl/intl.dart';
 
 import '../core/design.dart';
 import '../core/models.dart';
+import '../core/upi.dart';
+import '../core/settle.dart';
+import 'splits/item_editor.dart';
 import '../data/garden_store.dart';
 import '../shared/widgets.dart';
 
@@ -15,9 +20,21 @@ void openComposer(
   GardenTask? task,
   Goal? goal,
   bool split = false,
+  BillSplit? bill,
+  String? groupId,
+  bool duplicate = false,
 }) => sheet(
   context,
-  Composer(mode: mode, entry: entry, task: task, goal: goal, split: split),
+  Composer(
+    mode: mode,
+    entry: entry,
+    task: task,
+    goal: goal,
+    split: split,
+    bill: bill,
+    groupId: groupId,
+    duplicate: duplicate,
+  ),
 );
 
 class Composer extends ConsumerStatefulWidget {
@@ -26,6 +43,9 @@ class Composer extends ConsumerStatefulWidget {
   final GardenTask? task;
   final Goal? goal;
   final bool split;
+  final BillSplit? bill;
+  final String? groupId;
+  final bool duplicate;
   const Composer({
     super.key,
     required this.mode,
@@ -33,6 +53,9 @@ class Composer extends ConsumerStatefulWidget {
     this.task,
     this.goal,
     this.split = false,
+    this.bill,
+    this.groupId,
+    this.duplicate = false,
   });
   @override
   ConsumerState<Composer> createState() => _ComposerState();
@@ -54,22 +77,31 @@ class _ComposerState extends ConsumerState<Composer> {
   bool saving = false;
   SplitMethod method = SplitMethod.equal;
   String? error;
+  List<SplitItem> items = [];
+  String repeat = 'none';
   @override
   void initState() {
     super.initState();
     mode = widget.mode;
     title = TextEditingController(
-      text: widget.entry?.title ?? widget.task?.title ?? widget.goal?.title,
+      text:
+          widget.bill?.title ??
+          widget.entry?.title ??
+          widget.task?.title ??
+          widget.goal?.title,
     );
     final initialAmount =
-        widget.entry?.amount ?? widget.task?.amount ?? widget.goal?.target;
+        widget.bill?.total ??
+        widget.entry?.amount ??
+        widget.task?.amount ??
+        widget.goal?.target;
     amount = TextEditingController(
       text: initialAmount == null || initialAmount == 0
           ? ''
           : (initialAmount / 100).toStringAsFixed(2),
     );
     notes = TextEditingController(
-      text: widget.entry?.notes ?? widget.task?.notes,
+      text: widget.bill?.notes ?? widget.entry?.notes ?? widget.task?.notes,
     );
     category = widget.entry?.category ?? (mode == 'income' ? 'Salary' : 'Food');
     direction = widget.task?.direction ?? 'none';
@@ -79,7 +111,36 @@ class _ComposerState extends ConsumerState<Composer> {
         widget.task?.date ??
         widget.goal?.date ??
         DateTime.now();
-    split = widget.split;
+    split = widget.split || widget.bill != null || widget.groupId != null;
+    final store = ref.read(gardenProvider);
+    final bill = widget.bill;
+    final group = store.data.groups
+        .where((g) => g.id == widget.groupId)
+        .firstOrNull;
+    if (bill != null || group != null) {
+      final ids = bill?.portions.keys.toList() ?? group!.memberIds;
+      people.addAll(store.data.people.where((p) => ids.contains(p.id)));
+      payer = bill?.payerId ?? 'self';
+      date = bill?.date ?? date;
+      method = bill?.method == SplitMethod.equal
+          ? SplitMethod.equal
+          : bill == null
+          ? SplitMethod.equal
+          : SplitMethod.custom;
+      items = List.of(bill?.items ?? []);
+      for (final id in ['self', ...people.map((p) => p.id)]) {
+        weights[id]?.dispose();
+        weights[id] = TextEditingController(
+          text: method == SplitMethod.equal
+              ? '1'
+              : minorDecimal(bill!.portions[id] ?? 0),
+        );
+      }
+      final linked = store.data.entries
+          .where((e) => e.splitId == bill?.id && e.kind == 'expense')
+          .firstOrNull;
+      category = linked?.category ?? category;
+    }
   }
 
   @override
@@ -113,6 +174,16 @@ class _ComposerState extends ConsumerState<Composer> {
   }
 
   List<int> allocation() {
+    if (items.isNotEmpty) {
+      final result = itemPortions(items, ['self', ...people.map((p) => p.id)]);
+      final total = result.values.fold(0, (a, b) => a + b);
+      if (total != parseMoney(amount.text)) {
+        throw const FormatException(
+          'Items, tax, tip and discount must add up to the bill.',
+        );
+      }
+      return result.values.toList();
+    }
     final values = ['self', ...people.map((p) => p.id)].map((id) {
       if (method == SplitMethod.equal) return 1;
       final raw = weights[id]!.text.trim();
@@ -158,13 +229,18 @@ class _ComposerState extends ConsumerState<Composer> {
       } else if (split) {
         final portions = allocation();
         final ids = ['self', ...people.map((p) => p.id)];
-        await store.saveSplit(
+        await (widget.bill != null && !widget.duplicate
+            ? store.updateSplit
+            : store.saveSplit)(
           BillSplit(
-            id: newId(),
+            id: widget.duplicate ? newId() : widget.bill?.id ?? newId(),
+            groupId: widget.bill?.groupId ?? widget.groupId,
+            notes: notes.text.trim(),
+            items: items,
             title: title.text.trim(),
             total: value,
             date: date,
-            method: method,
+            method: items.isEmpty ? method : SplitMethod.custom,
             portions: Map.fromIterables(ids, portions),
             payerId: payer,
           ),
@@ -173,18 +249,47 @@ class _ComposerState extends ConsumerState<Composer> {
           notes: notes.text.trim(),
         );
       } else {
-        await store.saveEntry(
-          Entry(
-            id: widget.entry?.id ?? newId(),
-            title: title.text.trim(),
-            amount: value,
-            date: date,
-            createdAt: widget.entry?.createdAt ?? DateTime.now(),
-            category: category,
-            kind: mode,
-            notes: notes.text.trim(),
-          ),
+        final entry = Entry(
+          id: widget.entry?.id ?? newId(),
+          title: title.text.trim(),
+          amount: value,
+          date: date,
+          createdAt: widget.entry?.createdAt ?? DateTime.now(),
+          category: category,
+          kind: mode,
+          notes: notes.text.trim(),
+          importRef: widget.entry?.importRef,
+          recurringId: widget.entry?.recurringId,
         );
+        if (widget.entry == null && repeat != 'none') {
+          final id = newId();
+          await store.change((d) {
+            d.entries.add(
+              Entry.fromJson({
+                ...entry.toJson(),
+                'id': 'rec:$id:${dateKey(date)}',
+                'recurringId': id,
+              }),
+            );
+            d.recurring.add(
+              RecurringRule(
+                id: id,
+                title: entry.title,
+                amount: value,
+                category: category,
+                kind: mode,
+                frequency: repeat,
+                startDate: date,
+                dayOfMonth: date.day,
+                weekday: date.weekday,
+                lastGeneratedPeriod: dateKey(date),
+              ),
+            );
+            store.activity(d, 'entry:${entry.id}');
+          });
+        } else {
+          await store.saveEntry(entry);
+        }
       }
       HapticFeedback.lightImpact();
       if (mounted) {
@@ -215,12 +320,51 @@ class _ComposerState extends ConsumerState<Composer> {
       }
     }
     final editing =
-        widget.entry != null || widget.task != null || widget.goal != null;
+        widget.bill != null ||
+        widget.entry != null ||
+        widget.task != null ||
+        widget.goal != null;
     return Form(
       key: form,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (!split &&
+              widget.entry == null &&
+              ['expense', 'income'].contains(mode))
+            DropdownButtonFormField<String>(
+              initialValue: repeat,
+              decoration: const InputDecoration(labelText: 'Repeat'),
+              items: [
+                'none',
+                'weekly',
+                'monthly',
+                'yearly',
+              ].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+              onChanged: (v) => setState(() => repeat = v!),
+            ),
+          if (split)
+            OutlinedButton.icon(
+              onPressed: () async {
+                final result = await sheet<List<SplitItem>>(
+                  context,
+                  ItemEditor(
+                    items: items,
+                    people: [
+                      const Person(id: 'self', name: 'You'),
+                      ...people,
+                    ],
+                  ),
+                );
+                if (result != null) setState(() => items = result);
+              },
+              icon: const Icon(Icons.receipt_long),
+              label: Text(
+                items.isEmpty
+                    ? 'Split by items'
+                    : '${items.length} items · Edit',
+              ),
+            ),
           Row(
             children: [
               Expanded(
@@ -504,10 +648,10 @@ class _ComposerState extends ConsumerState<Composer> {
                     children: [
                       CircleAvatar(
                         radius: 18,
-                        backgroundColor: Palette.lilac,
+                        backgroundColor: context.tokens.owe,
                         child: Text(
                           i == 0 ? 'Y' : people[i - 1].name[0],
-                          style: const TextStyle(color: Palette.ink),
+                          style: TextStyle(color: context.tokens.onReceive),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -530,7 +674,7 @@ class _ComposerState extends ConsumerState<Composer> {
                         ),
                       const SizedBox(width: 10),
                       AnimatedSwitcher(
-                        duration: Palette.motion,
+                        duration: GardenMotion.duration,
                         child: Text(
                           preview == null
                               ? '—'

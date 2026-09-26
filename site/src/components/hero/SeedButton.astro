@@ -1,0 +1,152 @@
+---
+// The signature download CTA. A real <a> to the stable APK URL (works without
+// JS). With JS: magnetic pull, crack-open sprout + coin burst, vibration, and
+// the install drawer. On desktop it flips to a QR code; on iOS it steps aside.
+import QRCode from 'qrcode';
+import { STABLE_APK_URL } from '../../lib/releases.ts';
+
+interface Props {
+  version: string;
+  sizeLabel: string;
+  publishedAt: string;
+  relativeLabel: string;
+}
+const { version, sizeLabel, publishedAt, relativeLabel } = Astro.props;
+const qr = await QRCode.toDataURL(STABLE_APK_URL, {
+  margin: 1,
+  width: 220,
+  color: { dark: '#111C17', light: '#F1F3EC' },
+});
+---
+
+<div id="seed-area" class="relative" style="perspective: 900px;">
+  <canvas id="seed-coins" class="pointer-events-none fixed inset-0 z-[45] size-full" aria-hidden="true"></canvas>
+
+  <div id="seed-flip" class="relative">
+    <div id="seed-rotor" class="relative transition-transform duration-500 will-change-transform" style="transform-style: preserve-3d;">
+    <a
+      id="seed-btn"
+      href={STABLE_APK_URL}
+      data-latest-apk
+      class="group relative inline-flex min-h-20 flex-col items-center justify-center gap-0.5 rounded-full px-12 py-4 text-center no-underline"
+      style="background: var(--brand); color: var(--on-brand); box-shadow: 0 10px 50px -12px var(--brand); backface-visibility: hidden;"
+    >
+      <span class="text-xl font-bold md:text-2xl" style="font-family: var(--font-display);" data-seed-label>
+        Download for Android
+      </span>
+      <span class="text-sm font-bold opacity-80" style="font-variant-numeric: tabular-nums;">
+        <span data-latest-version>v{version}</span> · {sizeLabel} · released
+        <span data-released-at={publishedAt}>{relativeLabel}</span>
+      </span>
+    </a>
+
+    <div
+      id="seed-qr"
+      class="absolute inset-0 hidden items-center justify-center gap-4 rounded-3xl border p-4"
+      style="background: var(--surface); border-color: color-mix(in srgb, var(--ink) 12%, transparent); transform: rotateY(180deg); backface-visibility: hidden;"
+    >
+      <img src={qr} alt={`QR code that downloads the latest Money Plant APK`} width="110" height="110" class="rounded-lg" />
+      <div class="text-left">
+        <p class="m-0 font-bold">Scan with your phone</p>
+        <p class="m-0 text-sm text-ink-muted">Point the camera, tap the link, plant it 🌱</p>
+        <a href={STABLE_APK_URL} data-latest-apk class="text-sm font-bold underline" style="color: var(--brand);">or download the APK</a>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <div id="seed-ios" class="hidden flex-col items-start gap-2">
+    <p class="m-0 rounded-full px-8 py-4 text-lg font-bold" style="background: var(--surface); border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);">
+      Android only for now 🌱
+    </p>
+    <a href="https://github.com/devmer2311/MoneyPlant/releases" rel="noopener" class="text-sm font-bold underline text-ink-muted">
+      Notify me about releases
+    </a>
+  </div>
+</div>
+
+<script>
+  import gsap from 'gsap';
+  import { burstCoins } from '../../lib/coins';
+  import { detectDevice } from '../../lib/device';
+
+  function init() {
+    const area = document.getElementById('seed-area');
+    const flip = document.getElementById('seed-flip');
+    const rotor = document.getElementById('seed-rotor');
+    const btn = document.getElementById('seed-btn') as HTMLAnchorElement | null;
+    const qr = document.getElementById('seed-qr');
+    const ios = document.getElementById('seed-ios');
+    const coins = document.getElementById('seed-coins') as HTMLCanvasElement | null;
+    if (!area || !flip || !rotor || !btn || !qr || !ios || !coins) return;
+    const device = detectDevice();
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Live relative time, refreshed each minute.
+    const rel = document.querySelector<HTMLElement>('[data-released-at]');
+    if (rel) {
+      const update = () => {
+        const days = Math.floor((Date.now() - new Date(rel.dataset.releasedAt!).getTime()) / 86_400_000);
+        rel.textContent = days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
+      };
+      update();
+      setInterval(update, 60_000);
+    }
+
+    if (device === 'ios') {
+      flip.style.display = 'none';
+      ios.style.display = 'flex';
+      return;
+    }
+
+    if (device === 'desktop') {
+      const label = btn.querySelector('[data-seed-label]');
+      if (label) label.textContent = 'Get it on your phone';
+      qr.style.display = 'flex';
+      let flipped = false;
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        flipped = !flipped;
+        rotor.style.transform = flipped ? 'rotateY(180deg)' : '';
+        const r = btn.getBoundingClientRect();
+        void burstCoins(coins, { x: r.left + r.width / 2, y: r.top }, { count: 12 });
+      });
+    } else {
+      // Android: let the download start, then celebrate + open the drawer.
+      btn.addEventListener('click', () => {
+        try {
+          navigator.vibrate?.(20);
+        } catch {
+          /* not supported */
+        }
+        const r = btn.getBoundingClientRect();
+        if (!reduce) {
+          gsap
+            .timeline()
+            .to(btn, { scale: 0.9, duration: 0.09 })
+            .to(btn, { scale: 1.04, duration: 0.22, ease: 'back.out(4)' })
+            .to(btn, { scale: 1, duration: 0.15 });
+        }
+        void burstCoins(coins, { x: r.left + r.width / 2, y: r.top + r.height / 2 });
+        setTimeout(() => window.dispatchEvent(new CustomEvent('mp:download')), 450);
+      });
+    }
+
+    // Magnetic pull on fine pointers.
+    if (!reduce && matchMedia('(pointer: fine)').matches) {
+      area.addEventListener('pointermove', (e) => {
+        const r = flip.getBoundingClientRect();
+        const dx = e.clientX - (r.left + r.width / 2);
+        const dy = e.clientY - (r.top + r.height / 2);
+        if (Math.hypot(dx, dy) < 220) {
+          gsap.to(flip, { x: dx * 0.15, y: dy * 0.2, duration: 0.4, ease: 'power2.out' });
+        }
+      });
+      area.addEventListener('pointerleave', () =>
+        gsap.to(flip, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.5)' }),
+      );
+    }
+  }
+
+  document.addEventListener('astro:page-load', init);
+</script>

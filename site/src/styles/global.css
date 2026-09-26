@@ -1,0 +1,153 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+/* Map tokens into Tailwind v4 utilities: bg-canvas, text-ink, border-hairline… */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-brand: var(--brand);
+  --color-on-brand: var(--on-brand);
+  --color-receive: var(--receive);
+  --color-on-receive: var(--on-receive);
+  --color-owe: var(--owe);
+  --color-on-owe: var(--on-owe);
+  --color-hero: var(--hero);
+  --color-hero-ink: var(--hero-ink);
+  --color-hero-muted: var(--hero-muted);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --radius-theme: var(--radius);
+}
+
+/* Self-hosted fonts, subset to Latin + ₹ (see scripts/gen-tokens.mjs header).
+   They live in src/assets so Vite rewrites URLs correctly under any base path. */
+@font-face { font-family: 'Manrope'; src: url('../assets/fonts/Manrope-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Manrope'; src: url('../assets/fonts/Manrope-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Outfit'; src: url('../assets/fonts/Outfit-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Outfit'; src: url('../assets/fonts/Outfit-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Fredoka'; src: url('../assets/fonts/Fredoka-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Fredoka'; src: url('../assets/fonts/Fredoka-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Space Grotesk'; src: url('../assets/fonts/SpaceGrotesk-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Space Grotesk'; src: url('../assets/fonts/SpaceGrotesk-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'DM Serif Display'; src: url('../assets/fonts/DMSerifDisplay-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'DM Serif Display'; src: url('../assets/fonts/DMSerifDisplay-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Quicksand'; src: url('../assets/fonts/Quicksand-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Quicksand'; src: url('../assets/fonts/Quicksand-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+
+/* Z-scale: 0 base · 1 particles · 2 content · 40 nav · 50 drawer/palette · 60 grain · 70 intro */
+
+html {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-body);
+  scrollbar-gutter: stable;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--canvas);
+  color: var(--ink);
+  overflow-x: clip;
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+::selection { background: var(--brand); color: var(--on-brand); }
+
+a, button, summary, input, select { touch-action: manipulation; }
+[id] { scroll-margin-top: 5rem; }
+
+/* Brand-filled CTAs (inline background: var(--brand)) get hover/active feedback. */
+a[style*='background: var(--brand)'],
+button[style*='background: var(--brand)'] {
+  transition: filter 0.15s ease, scale 0.15s ease;
+}
+a[style*='background: var(--brand)']:hover,
+button[style*='background: var(--brand)']:hover {
+  filter: brightness(1.07);
+}
+@media (prefers-reduced-motion: no-preference) {
+  a:active, button:active, summary:active { scale: 0.98; }
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.skip-link {
+  position: fixed;
+  top: -4rem;
+  left: 1rem;
+  z-index: 80;
+  padding: 0.6rem 1rem;
+  background: var(--brand);
+  color: var(--on-brand);
+  border-radius: 999px;
+  font-weight: 700;
+  transition: top 0.15s ease;
+}
+.skip-link:focus-visible { top: 1rem; }
+
+/* 2.5% noise grain over everything; fixed + pointer-events none so it never repaints on scroll. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Radial grow-light glow, placed behind key elements. */
+.glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand) 16%, transparent) 0%, transparent 70%);
+}
+
+.container-site {
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+@media (min-width: 768px) {
+  .container-site { padding-inline: 2rem; }
+}
+
+section { padding-block: clamp(5rem, 12vh, 9rem); }
+
+/* Skip style/layout work for below-fold sections until they approach the viewport. */
+main > section:not(:first-of-type) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
+/* Theme change: colour roles cross-fade unless a view transition is running. */
+html.theme-anim body,
+html.theme-anim .theme-fade {
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

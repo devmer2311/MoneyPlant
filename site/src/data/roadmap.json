@@ -1,0 +1,18 @@
+{
+  "_comment": "Hand-maintained. status: now | next | ideas | shipped. progress 0-100 (only for 'now'). release links shipped items to /releases/<tag>.",
+  "items": [
+    { "title": "In-app update check", "note": "The app learns to spot a newer release and open its page here.", "status": "now", "progress": 40 },
+    { "title": "Statement visual polish", "note": "Pixel-matching the premium statement mockup, status pills included.", "status": "now", "progress": 60 },
+    { "title": "Per-bank PDF import profiles", "note": "Layout fixtures for the big Indian banks so PDF imports need zero mapping.", "status": "now", "progress": 25 },
+    { "title": "Due-tomorrow reminders", "note": "Recurring rules nudge you the day before they fire.", "status": "next" },
+    { "title": "Interaction polish pass 2", "note": "Split-to-receipt hero animation, pull-down people search, spring transitions.", "status": "next" },
+    { "title": "Play Store exploration", "note": "Weighing a store listing against the instant GitHub release flow.", "status": "next" },
+    { "title": "Home screen widgets", "note": "Balance and quick-add on your launcher.", "status": "ideas" },
+    { "title": "Multi-currency gardens", "note": "Track trips abroad without mental exchange maths.", "status": "ideas" },
+    { "title": "iOS build", "note": "Flutter makes it possible; distribution makes it hard. Still dreaming.", "status": "ideas" },
+    { "title": "Bank statement import", "note": "CSV, XLSX and text-PDF with duplicate detection and split matching.", "status": "shipped", "release": "v1.0.1" },
+    { "title": "Groups, trips and settle-up", "note": "Debt simplification down to who pays whom.", "status": "shipped", "release": "v1.0.1" },
+    { "title": "Laser Vault app lock", "note": "Biometric lock with the laser screen this site pays homage to.", "status": "shipped", "release": "v1.0.1" },
+    { "title": "Recurring entries and budgets", "note": "Rules that catch up atomically, budgets that warn gently.", "status": "shipped", "release": "v1.0.1" }
+  ]
+}

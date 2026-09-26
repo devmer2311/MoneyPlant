@@ -19,7 +19,7 @@ class Surface extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: color ?? context.colors.surface,
-    borderRadius: BorderRadius.circular(Palette.radius),
+    borderRadius: BorderRadius.circular(context.tokens.radius),
     child: Padding(padding: padding, child: child),
   );
 }
@@ -57,7 +57,7 @@ class Tag extends StatelessWidget {
       text,
       style: context.type.bodySmall?.copyWith(
         fontWeight: FontWeight.w600,
-        color: color != null ? Palette.ink : null,
+        color: color != null ? context.tokens.onReceive : null,
       ),
     ),
   );
@@ -116,24 +116,25 @@ class PlantArt extends StatelessWidget {
     child: SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(painter: _PlantPainter(stage)),
+      child: CustomPaint(painter: _PlantPainter(stage, context.tokens)),
     ),
   );
 }
 
 class _PlantPainter extends CustomPainter {
   final int stage;
-  _PlantPainter(this.stage);
+  final GardenTokens tokens;
+  _PlantPainter(this.stage, this.tokens);
   @override
   void paint(Canvas canvas, Size size) {
     canvas.save();
     canvas.scale(size.width / 200, size.height / 200);
     canvas.drawOval(
       const Rect.fromLTWH(44, 173, 112, 17),
-      Paint()..color = const Color(0xFF617856).withValues(alpha: .15),
+      Paint()..color = tokens.plantShadow.withValues(alpha: .15),
     );
     final stem = Paint()
-      ..color = Palette.forest
+      ..color = tokens.hero
       ..strokeWidth = 5
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
@@ -152,14 +153,18 @@ class _PlantPainter extends CustomPainter {
         ..moveTo(0, 0)
         ..cubicTo(-10, -length * .8, 14, -length, 27, -length)
         ..cubicTo(36, -length * .3, 15, -3, 0, 0);
-      canvas.drawShadow(path, const Color(0xFF254A24), 4, false);
+      canvas.drawShadow(path, tokens.leafShadow, 4, false);
       canvas.drawPath(
         path,
         Paint()
-          ..shader = const LinearGradient(
+          ..shader = LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFE3F7B4), Color(0xFF89B65A), Color(0xFF315E44)],
+            colors: [
+              tokens.leafHighlight,
+              tokens.leafMidtone,
+              tokens.leafShade,
+            ],
           ).createShader(Rect.fromLTWH(-10, -length, 45, length)),
       );
       canvas.drawPath(
@@ -167,7 +172,7 @@ class _PlantPainter extends CustomPainter {
           ..moveTo(2, -3)
           ..quadraticBezierTo(12, -length / 2, 25, -length + 5),
         Paint()
-          ..color = Palette.forest.withValues(alpha: .35)
+          ..color = tokens.hero.withValues(alpha: .35)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1,
       );
@@ -189,12 +194,12 @@ class _PlantPainter extends CustomPainter {
     canvas.drawPath(
       pot,
       Paint()
-        ..shader = const LinearGradient(
+        ..shader = LinearGradient(
           colors: [
-            Color(0xFFD4CAB5),
-            Color(0xFFFFFFF0),
-            Color(0xFFEDE4D2),
-            Color(0xFFBCAF95),
+            tokens.potShade,
+            tokens.potHighlight,
+            tokens.potMidtone,
+            tokens.potEdge,
           ],
         ).createShader(const Rect.fromLTWH(64, 137, 72, 45)),
     );
@@ -203,11 +208,11 @@ class _PlantPainter extends CustomPainter {
         const Rect.fromLTWH(60, 132, 80, 13),
         const Radius.circular(6),
       ),
-      Paint()..color = const Color(0xFFF9EDDC),
+      Paint()..color = tokens.potRim,
     );
     canvas.drawOval(
       const Rect.fromLTWH(66, 133, 68, 7),
-      Paint()..color = const Color(0xFF766F50),
+      Paint()..color = tokens.soil,
     );
     canvas.drawLine(const Offset(100, 136), const Offset(100, 127), stem);
     for (final point in [
@@ -216,7 +221,7 @@ class _PlantPainter extends CustomPainter {
       const Offset(157, 113),
     ]) {
       final paint = Paint()
-        ..color = const Color(0xFF70864D)
+        ..color = tokens.sparkle
         ..strokeWidth = 1.5;
       canvas.drawLine(point.translate(-4, 0), point.translate(4, 0), paint);
       canvas.drawLine(point.translate(0, -4), point.translate(0, 4), paint);
@@ -225,7 +230,8 @@ class _PlantPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PlantPainter oldDelegate) => stage != oldDelegate.stage;
+  bool shouldRepaint(_PlantPainter oldDelegate) =>
+      stage != oldDelegate.stage || tokens != oldDelegate.tokens;
 }
 
 Future<T?> sheet<T>(BuildContext context, Widget child) =>

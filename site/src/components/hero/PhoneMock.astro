@@ -1,0 +1,125 @@
+---
+// CSS-3D phone frame with real app screenshots that cycle through the 5 themes
+// and follow the active site theme. Tilts toward the cursor on fine pointers.
+import { getImage } from 'astro:assets';
+import gardenShot from '../../assets/screens/garden/overview.png';
+import sakuraShot from '../../assets/screens/sakura/overview.png';
+import neonShot from '../../assets/screens/neon/overview.png';
+import mangoShot from '../../assets/screens/mango/overview.png';
+import oceanShot from '../../assets/screens/ocean/overview.png';
+
+const sources = { garden: gardenShot, sakura: sakuraShot, neon: neonShot, mango: mangoShot, ocean: oceanShot };
+const screens = await Promise.all(
+  Object.entries(sources).map(async ([id, src]) => ({
+    id,
+    img: await getImage({ src, format: 'webp', width: 640 }),
+  })),
+);
+---
+
+<div id="phone-scene" class="relative mx-auto w-[min(320px,78vw)]" style="perspective: 1200px;">
+  <div class="glow -inset-16" aria-hidden="true"></div>
+  <span class="float-bit absolute -left-10 top-8 text-3xl" aria-hidden="true" data-depth="18">🍃</span>
+  <span class="float-bit absolute -right-8 top-28 text-2xl" aria-hidden="true" data-depth="30">🪙</span>
+  <span class="float-bit absolute -left-6 bottom-16 text-2xl" aria-hidden="true" data-depth="26">🪙</span>
+  <span class="float-bit absolute -right-12 bottom-40 text-3xl" aria-hidden="true" data-depth="14">🍃</span>
+
+  <div
+    id="phone-frame"
+    class="relative overflow-hidden rounded-[42px] border-4 theme-fade"
+    style="border-color: color-mix(in srgb, var(--ink) 22%, var(--canvas)); background: var(--hero); box-shadow: 0 40px 90px -30px color-mix(in srgb, var(--hero-grad-2) 70%, black); transform-style: preserve-3d;"
+  >
+    <div class="absolute left-1/2 top-2.5 z-10 h-5 w-24 -translate-x-1/2 rounded-full" style="background: color-mix(in srgb, black 55%, var(--hero));" aria-hidden="true"></div>
+    {screens.map(({ id, img }, i) => (
+      <img
+        src={img.src}
+        width={img.attributes.width}
+        height={img.attributes.height}
+        alt={i === 0 ? 'Money Plant app: the Overview screen showing balance, income and spending' : ''}
+        aria-hidden={i === 0 ? undefined : 'true'}
+        data-screen={id}
+        loading={i === 0 ? 'eager' : 'lazy'}
+        fetchpriority={i === 0 ? 'high' : undefined}
+        class="w-full transition-opacity duration-500"
+        style={`display: block; ${i === 0 ? '' : 'position: absolute; inset: 0; opacity: 0;'}`}
+      />
+    ))}
+  </div>
+</div>
+
+<script>
+  import gsap from 'gsap';
+  import { currentTheme } from '../../lib/theme';
+
+  function init() {
+    const scene = document.getElementById('phone-scene');
+    const frame = document.getElementById('phone-frame');
+    if (!scene || !frame) return;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const shots = [...frame.querySelectorAll<HTMLImageElement>('[data-screen]')];
+    const order = shots.map((s) => s.dataset.screen!);
+    let active = currentTheme().theme;
+    let timer: ReturnType<typeof setInterval> | undefined;
+
+    const show = (id: string) => {
+      active = id;
+      for (const s of shots) s.style.opacity = s.dataset.screen === id ? '1' : '0';
+    };
+    const startCycle = () => {
+      clearInterval(timer);
+      if (reduce) return;
+      timer = setInterval(() => {
+        show(order[(order.indexOf(active) + 1) % order.length]!);
+      }, 3000);
+    };
+    show(active);
+    startCycle();
+    window.addEventListener('mp:theme', ((e: CustomEvent) => {
+      show(e.detail.theme);
+      startCycle();
+    }) as EventListener);
+    document.addEventListener('visibilitychange', () =>
+      document.hidden ? clearInterval(timer) : startCycle(),
+    );
+
+    if (reduce) return;
+    const bits = [...scene.querySelectorAll<HTMLElement>('.float-bit')];
+    for (const bit of bits) {
+      gsap.to(bit, {
+        y: 'random(-14, 14)',
+        rotation: 'random(-20, 20)',
+        duration: 'random(2.4, 3.8)',
+        yoyo: true,
+        repeat: -1,
+        ease: 'sine.inOut',
+      });
+    }
+
+    // Tilt toward the pointer (fine pointers), or with device orientation on mobile.
+    const setTilt = (nx: number, ny: number) => {
+      gsap.to(frame, { rotateY: nx * 14, rotateX: -ny * 10, duration: 0.6, ease: 'power2.out' });
+      for (const bit of bits) {
+        const depth = Number(bit.dataset.depth ?? 20);
+        gsap.to(bit, { x: nx * depth, duration: 0.8, ease: 'power2.out' });
+      }
+    };
+    if (matchMedia('(pointer: fine)').matches) {
+      const hero = scene.closest('section') ?? scene;
+      hero.addEventListener('pointermove', (e) => {
+        const r = scene.getBoundingClientRect();
+        const nx = ((e as PointerEvent).clientX - (r.left + r.width / 2)) / innerWidth;
+        const ny = ((e as PointerEvent).clientY - (r.top + r.height / 2)) / innerHeight;
+        setTilt(gsap.utils.clamp(-0.5, 0.5, nx * 2), gsap.utils.clamp(-0.5, 0.5, ny * 2));
+      });
+      hero.addEventListener('pointerleave', () => setTilt(0, 0));
+    } else if ('DeviceOrientationEvent' in window && !('requestPermission' in DeviceOrientationEvent)) {
+      // Android exposes orientation without a permission prompt; iOS would need one, so skip there.
+      addEventListener('deviceorientation', (e) => {
+        if (e.gamma == null || e.beta == null) return;
+        setTilt(gsap.utils.clamp(-0.5, 0.5, e.gamma / 60), gsap.utils.clamp(-0.5, 0.5, (e.beta - 45) / 60));
+      });
+    }
+  }
+
+  document.addEventListener('astro:page-load', init);
+</script>

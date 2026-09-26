@@ -49,3 +49,47 @@ app.*.map.json
 # Local previews and screenshots
 /artifacts/
 /tool/__pycache__/
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
+
+# Local agent tooling and planning docs (not part of the app)
+/docs/
+/.claude/
+/.mcp.json
+/design/
+/.playwright/
+/site/.screens/
+
+# Site build artifacts
+/site/node_modules/
+/site/dist/
+/site/.astro/
+
+# Local agent configuration and skills
+.codex/
+.agents/
+.claude/
+skills/
+SKILL.md
+AGENTS.md
+CLAUDE.md
+.mcp.json
+
+# Local credentials and deployment state
+.env
+.env.*
+!.env.example
+.wrangler/
+*.jks
+*.keystore
+key.properties
+
+# Generated packages, caches and browser automation
+node_modules/
+.astro/
+__pycache__/
+*.apk
+*.aab
+*.ipa
+/site/site/
+/site/DESIGN.md

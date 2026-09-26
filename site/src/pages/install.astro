@@ -1,0 +1,179 @@
+---
+import Base from '../layouts/Base.astro';
+import { getReleases, latestRelease, STABLE_APK_URL } from '../lib/releases.ts';
+
+const releases = await getReleases();
+const latest = latestRelease(releases);
+const steps = [
+  {
+    n: 1,
+    title: 'Download the APK',
+    body: 'Tap the seed button on this site (or the one below). Your browser saves the file and shows it in notifications.',
+    art: 'download',
+  },
+  {
+    n: 2,
+    title: 'Allow "Install unknown apps"',
+    body: 'Android asks once, for your browser only. It sounds scary; it just means "an app that didn’t come from the Play Store".',
+    art: 'toggle',
+  },
+  {
+    n: 3,
+    title: 'Tap Install and grow',
+    body: 'Open the file, tap Install, and your money plant is potted. Updates install right over it, data intact.',
+    art: 'plant',
+  },
+];
+const troubles = [
+  {
+    q: '"App not installed"',
+    a: 'Usually a half-downloaded file. Delete the APK, download it again, and check you have a little free storage. If you had a very old version installed from a different source, uninstall it first.',
+  },
+  {
+    q: 'Blocked by Play Protect',
+    a: 'Play Protect sometimes pauses on apps it has never seen. Tap "More details" and then "Install anyway". The build comes straight from the public GitHub Action, and you can verify the checksum below.',
+  },
+  {
+    q: 'Will updating erase my data?',
+    a: 'No. Every release is signed with the same key, so Android installs it as an update over the old version and your garden stays exactly as it was.',
+  },
+  {
+    q: 'Nothing happens when I open the APK',
+    a: 'Open your file manager, go to Downloads, and tap the APK there. Some browsers hide the "open" action after the download banner disappears.',
+  },
+];
+---
+
+<Base
+  title="Install guide · Money Plant"
+  description="How to install the Money Plant APK on Android in three friendly steps, plus troubleshooting and checksum verification."
+  ogImage={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/og/install.png`}
+>
+  <section class="container-site max-w-4xl !pt-14">
+    <h1 class="m-0" style="font-size: clamp(2.6rem, 6vw, 4.5rem); letter-spacing: -0.03em;">Plant it in 3 steps</h1>
+    <p class="mt-3 max-w-[55ch] text-lg text-ink-muted">
+      Installing an APK feels unfamiliar the first time. It's a two-minute job, and here is every tap.
+    </p>
+
+    <ol class="m-0 mt-14 grid list-none gap-16 p-0">
+      {steps.map((s) => (
+        <li class="step-row grid items-center gap-8 md:grid-cols-2">
+          <div class:list={['order-2', s.n % 2 === 0 && 'md:order-1']}>
+            <p class="m-0 text-sm font-bold" style="color: var(--brand);">Step {s.n} of 3</p>
+            <h2 class="m-0 mt-1 text-3xl">{s.title}</h2>
+            <p class="mt-2 max-w-[46ch] text-ink-muted">{s.body}</p>
+          </div>
+          <div class:list={['order-1 flex justify-center', s.n % 2 === 0 && 'md:order-2']}>
+            <div class="step-phone relative h-64 w-36 rounded-3xl border-4 p-3" style="border-color: color-mix(in srgb, var(--ink) 20%, var(--canvas)); background: var(--surface);" aria-hidden="true">
+              {s.art === 'download' && (
+                <div class="grid h-full content-start gap-2">
+                  <div class="h-2 w-16 rounded-full" style="background: var(--surface-alt);"></div>
+                  <div class="anim-drop mx-auto mt-8 text-4xl">📦</div>
+                  <div class="anim-bar mx-auto mt-2 h-2 w-24 overflow-hidden rounded-full" style="background: var(--surface-alt);">
+                    <div class="anim-bar-fill h-full rounded-full" style="background: var(--brand); width: 100%;"></div>
+                  </div>
+                  <p class="m-0 text-center text-[10px] font-bold text-ink-muted">money-plant.apk</p>
+                </div>
+              )}
+              {s.art === 'toggle' && (
+                <div class="grid h-full content-center gap-3 text-center">
+                  <p class="m-0 text-[11px] font-bold">Install unknown apps</p>
+                  <p class="m-0 text-[10px] text-ink-muted">Your browser</p>
+                  <span class="anim-toggle relative mx-auto inline-block h-7 w-13 rounded-full" style="background: color-mix(in srgb, var(--ink) 25%, transparent); width: 3.25rem;">
+                    <span class="anim-knob absolute left-1 top-1 size-5 rounded-full bg-white"></span>
+                  </span>
+                </div>
+              )}
+              {s.art === 'plant' && (
+                <div class="grid h-full content-center gap-2 text-center">
+                  <div class="anim-grow text-5xl">🌱</div>
+                  <p class="m-0 text-[11px] font-bold">Installed</p>
+                  <p class="m-0 text-[10px] text-ink-muted">Open</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </li>
+      ))}
+    </ol>
+
+    <p class="mt-14 text-center">
+      <a
+        href={STABLE_APK_URL}
+        data-latest-apk
+        class="inline-block rounded-full px-10 py-4 text-lg font-bold no-underline"
+        style="background: var(--brand); color: var(--on-brand); font-family: var(--font-display); box-shadow: 0 8px 40px -10px var(--brand);"
+      >
+        Download the latest APK
+      </a>
+    </p>
+
+    <section class="mt-20" aria-labelledby="verify-title">
+      <h2 id="verify-title" class="m-0 text-2xl">Verify your download</h2>
+      <p class="mt-2 max-w-[65ch] text-ink-muted">
+        Every release publishes a SHA-256 checksum next to its APK. Compute the hash of your file and compare it with the one on the
+        release page; a match proves the file arrived untouched.
+      </p>
+      <div class="mt-4 grid gap-3 md:grid-cols-2">
+        <div class="rounded-2xl p-4" style="background: var(--surface);">
+          <p class="m-0 text-sm font-bold">Windows</p>
+          <code class="text-xs text-ink-muted">certutil -hashfile money-plant.apk SHA256</code>
+        </div>
+        <div class="rounded-2xl p-4" style="background: var(--surface);">
+          <p class="m-0 text-sm font-bold">Linux / macOS / Termux</p>
+          <code class="text-xs text-ink-muted">sha256sum money-plant.apk</code>
+        </div>
+      </div>
+      {latest?.sha256 && (
+        <p class="mt-3 text-sm text-ink-muted">
+          Latest release (v{latest.version}) checksum: <code class="break-all text-xs">{latest.sha256}</code>
+        </p>
+      )}
+    </section>
+
+    <section class="mt-16" aria-labelledby="trouble-title">
+      <h2 id="trouble-title" class="m-0 text-2xl">If something wilts</h2>
+      <div class="mt-4">
+        {troubles.map((t) => (
+          <details class="group border-b" style="border-color: color-mix(in srgb, var(--ink) 10%, transparent);" name="trouble">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-bold [&::-webkit-details-marker]:hidden">
+              {t.q}
+              <span class="shrink-0 transition-transform duration-300 group-open:rotate-45" style="color: var(--brand);" aria-hidden="true">＋</span>
+            </summary>
+            <p class="mt-0 max-w-[65ch] pb-4 text-ink-muted">{t.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  </section>
+</Base>
+
+<style>
+  @media (prefers-reduced-motion: no-preference) {
+    .anim-drop { animation: drop 2.4s ease-in-out infinite; }
+    .anim-bar-fill { transform-origin: left; animation: fillbar 2.4s ease-in-out infinite; }
+    .anim-knob { animation: knob 2.8s ease-in-out infinite; }
+    .anim-toggle { animation: toggletint 2.8s ease-in-out infinite; }
+    .anim-grow { display: inline-block; animation: grow 2.6s cubic-bezier(0.34, 1.56, 0.64, 1) infinite; }
+  }
+  @keyframes drop {
+    0% { transform: translateY(-28px); opacity: 0; }
+    35%, 100% { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes fillbar {
+    0%, 25% { transform: scaleX(0); }
+    75%, 100% { transform: scaleX(1); }
+  }
+  @keyframes knob {
+    0%, 30% { transform: translateX(0); }
+    60%, 100% { transform: translateX(1.35rem); }
+  }
+  @keyframes toggletint {
+    0%, 30% { background: color-mix(in srgb, var(--ink) 25%, transparent); }
+    60%, 100% { background: var(--brand); }
+  }
+  @keyframes grow {
+    0% { transform: scale(0.4); }
+    45%, 100% { transform: scale(1); }
+  }
+</style>

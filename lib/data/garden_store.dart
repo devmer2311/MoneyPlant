@@ -1,3 +1,6 @@
+import 'garden_operations.dart';
+export 'garden_operations.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -45,6 +48,7 @@ class GardenStore extends ChangeNotifier {
     try {
       final next = GardenData.decode(_data.encode());
       apply(next);
+      next.validate();
       await repository.write(next.encode());
       _data = next;
       notifyListeners();
@@ -79,7 +83,7 @@ class GardenStore extends ChangeNotifier {
   });
   Future<void> removeEntry(String id) => change((d) {
     final e = d.entries.firstWhere((x) => x.id == id);
-    if (e.splitId != null || e.goalId != null) {
+    if (e.splitId != null || e.goalId != null || e.id.startsWith('group:')) {
       throw const FormatException(
         'Manage this linked entry from its split or goal.',
       );
@@ -200,57 +204,20 @@ class GardenStore extends ChangeNotifier {
   int remaining(BillSplit split, String person) => person == split.payerId
       ? 0
       : (split.portions[person] ?? 0) - paid(split, person);
-  int get receivable => data.splits
-      .where((s) => s.payerId == 'self')
-      .fold(
-        0,
-        (a, s) => a + s.portions.keys.fold(0, (b, p) => b + remaining(s, p)),
-      );
-  int get owed => data.splits
-      .where((s) => s.payerId != 'self')
-      .fold(0, (a, s) => a + remaining(s, 'self'));
+  int get receivable => data.people
+      .map((p) => personNet(p.id))
+      .where((v) => v > 0)
+      .fold(0, (a, b) => a + b);
+  int get owed => -data.people
+      .map((p) => personNet(p.id))
+      .where((v) => v < 0)
+      .fold(0, (a, b) => a + b);
   Future<void> recordPayment(
     String splitId,
     String person,
     int amount,
     DateTime date,
-  ) => change((d) {
-    final split = data.splits.firstWhere((s) => s.id == splitId);
-    if (person == split.payerId ||
-        (split.payerId != 'self' && person != 'self') ||
-        amount <= 0 ||
-        amount > remaining(split, person)) {
-      throw const FormatException(
-        'Payment must be within the outstanding amount.',
-      );
-    }
-    final paymentId = newId();
-    d.payments.add(
-      Payment(
-        id: paymentId,
-        splitId: splitId,
-        personId: person,
-        amount: amount,
-        date: date,
-      ),
-    );
-    d.entries.add(
-      Entry(
-        id: newId(),
-        title:
-            '${split.title} · ${personName(person == 'self' ? split.payerId : person)}',
-        amount: amount,
-        date: date,
-        createdAt: DateTime.now(),
-        category: 'Settlement',
-        kind: split.payerId == 'self' ? 'reimbursement' : 'settlement',
-        splitId: splitId,
-      ),
-    );
-    if (amount == remaining(split, person)) {
-      activity(d, 'settle:$splitId:$person');
-    }
-  });
+  ) => change((d) => applyPayment(d, splitId, person, amount, date));
   List<Entry> get posted =>
       data.entries.where((e) => !e.date.isAfter(DateTime.now())).toList();
   int get balance =>
@@ -260,7 +227,7 @@ class GardenStore extends ChangeNotifier {
         (e) =>
             e.date.year == month.year &&
             e.date.month == month.month &&
-            (income ? e.kind == 'income' : !e.incoming),
+            (income ? e.kind == 'income' : e.kind == 'expense'),
       )
       .fold(0, (a, e) => a + e.amount);
   int get xp => data.activity.keys.fold(

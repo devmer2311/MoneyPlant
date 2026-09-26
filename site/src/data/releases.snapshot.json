@@ -1,0 +1,24 @@
+[
+  {
+    "tag": "v1.0.1",
+    "version": "1.0.1",
+    "name": "Money Plant v1.0.1",
+    "publishedAt": "2026-09-20T10:28:07Z",
+    "prerelease": false,
+    "bodyHtml": "<p><strong>Full Changelog</strong>: <a href=\"https://github.com/devmer2311/MoneyPlant/commits/v1.0.1\" rel=\"noopener\">https://github.com/devmer2311/MoneyPlant/commits/v1.0.1</a></p>",
+    "htmlUrl": "https://github.com/devmer2311/MoneyPlant/releases/tag/v1.0.1",
+    "apk": {
+      "name": "money-plant-v1.0.1+2.apk",
+      "url": "https://github.com/devmer2311/MoneyPlant/releases/download/v1.0.1/money-plant-v1.0.1%2B2.apk",
+      "size": 65644796,
+      "downloads": 3
+    },
+    "kind": "major",
+    "sections": {
+      "new": [],
+      "fixes": [],
+      "design": [],
+      "other": []
+    }
+  }
+]

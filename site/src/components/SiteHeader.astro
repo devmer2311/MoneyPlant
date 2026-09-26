@@ -1,0 +1,81 @@
+---
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const links = [
+  { href: `${base}/releases`, label: 'Releases' },
+  { href: `${base}/install`, label: 'Install' },
+  { href: `${base}/roadmap`, label: 'Roadmap' },
+];
+const path = Astro.url.pathname.replace(/\/$/, '');
+const isCurrent = (href: string) => path === href || (href.endsWith('/releases') && path.startsWith(`${base}/releases`));
+---
+
+<header class="sticky top-0 z-40 theme-fade" style="background: color-mix(in srgb, var(--canvas) 82%, transparent); backdrop-filter: blur(14px);">
+  <div class="container-site flex h-16 items-center justify-between gap-4">
+    <a href={`${base}/`} id="site-logo" class="flex items-center gap-2 font-bold text-lg" style="font-family: var(--font-display);">
+      <span aria-hidden="true">🌱</span>
+      <span>Money Plant</span>
+    </a>
+    <nav aria-label="Main" class="hidden md:flex items-center gap-6 text-sm font-bold">
+      {links.map((l) => (
+        <a
+          href={l.href}
+          aria-current={isCurrent(l.href) ? 'page' : undefined}
+          class="transition-colors hover:text-ink"
+          style={isCurrent(l.href) ? 'color: var(--brand); text-decoration: underline; text-underline-offset: 6px;' : 'color: var(--ink-muted);'}
+        >
+          {l.label}
+        </a>
+      ))}
+      <a href="https://github.com/devmer2311/MoneyPlant" class="text-ink-muted hover:text-ink transition-colors" rel="noopener">GitHub ★</a>
+    </nav>
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5" role="group" aria-label="Site theme" id="header-orbs"></div>
+      <button
+        id="mode-toggle"
+        type="button"
+        class="grid size-9 place-items-center rounded-full border text-base"
+        style="border-color: color-mix(in srgb, var(--ink) 15%, transparent); background: var(--surface);"
+        aria-label="Switch between dark and light mode"
+      >
+        <span aria-hidden="true" data-icon>◐</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<script>
+  import { setTheme, currentTheme } from '../lib/theme';
+  import { themePacks } from '../lib/themes';
+
+  function build() {
+    const holder = document.getElementById('header-orbs');
+    if (!holder) return;
+    holder.innerHTML = '';
+    const { theme, mode } = currentTheme();
+    for (const pack of themePacks) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'size-5 rounded-full transition-transform hover:scale-125';
+      btn.style.background = `linear-gradient(135deg, ${pack.dark.brand}, ${pack.light.brand})`;
+      btn.style.boxShadow = pack.id === theme ? `0 0 0 2px var(--canvas), 0 0 0 4px var(--brand)` : 'none';
+      btn.setAttribute('aria-label', `${pack.name} theme`);
+      btn.setAttribute('aria-pressed', String(pack.id === theme));
+      btn.addEventListener('click', (e) => {
+        setTheme(pack.id, currentTheme().mode, { x: e.clientX, y: e.clientY });
+      });
+      holder.appendChild(btn);
+    }
+    const toggle = document.getElementById('mode-toggle');
+    toggle?.addEventListener('click', (e) => {
+      const cur = currentTheme();
+      setTheme(cur.theme, cur.mode === 'dark' ? 'light' : 'dark', {
+        x: (e as MouseEvent).clientX,
+        y: (e as MouseEvent).clientY,
+      });
+    });
+    void mode;
+  }
+
+  document.addEventListener('astro:page-load', build);
+  window.addEventListener('mp:theme', build);
+</script>

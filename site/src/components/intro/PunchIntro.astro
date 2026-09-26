@@ -1,0 +1,91 @@
+---
+// First-visit launch scene: seed slams down, plant bursts up, coins explode,
+// "MONEY PLANT." punches in, circular reveal out. ≤1.2s, any input skips it.
+---
+
+<div
+  id="punch-intro"
+  aria-hidden="true"
+  hidden
+  class="fixed inset-0 z-[70] grid place-items-center overflow-hidden"
+  style="background: var(--hero);"
+>
+  <canvas id="intro-coins" class="absolute inset-0 size-full"></canvas>
+  <div class="relative grid place-items-center gap-4 text-center">
+    <div id="intro-seed" class="size-6 rounded-full" style="background: var(--coin-shade); box-shadow: 0 0 24px var(--coin-hi);"></div>
+    <div id="intro-plant" class="text-7xl" style="transform: scale(0);">🌱</div>
+    <p
+      id="intro-title"
+      class="text-4xl font-bold md:text-6xl"
+      style="font-family: var(--font-display); color: var(--hero-ink); letter-spacing: -0.03em;"
+    >
+    </p>
+  </div>
+</div>
+
+<script>
+  import gsap from 'gsap';
+  import { burstCoins } from '../../lib/coins';
+  import { scrambleTo } from '../../lib/scramble';
+
+  function runIntro() {
+    const overlay = document.getElementById('punch-intro');
+    if (!overlay) return;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const bot = navigator.webdriver || /bot|crawl|spider|lighthouse/i.test(navigator.userAgent);
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem('mp-intro') === '1';
+      sessionStorage.setItem('mp-intro', '1');
+    } catch {
+      /* storage blocked: show it, it is short */
+    }
+    if (reduce || bot || seen) {
+      overlay.remove();
+      return;
+    }
+
+    overlay.hidden = false;
+    const title = document.getElementById('intro-title')!;
+    const seed = document.getElementById('intro-seed')!;
+    const plant = document.getElementById('intro-plant')!;
+    const coins = document.getElementById('intro-coins') as HTMLCanvasElement;
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      tl.kill();
+      gsap.to(overlay, {
+        clipPath: 'circle(0% at 50% 55%)',
+        duration: 0.3,
+        ease: 'power3.in',
+        onComplete: () => overlay.remove(),
+      });
+      removeEventListener('pointerdown', finish);
+      removeEventListener('keydown', finish);
+    };
+    addEventListener('pointerdown', finish);
+    addEventListener('keydown', finish);
+
+    overlay.style.clipPath = 'circle(150% at 50% 55%)';
+    const tl = gsap.timeline({ onComplete: finish });
+    tl.from(seed, { y: -220, duration: 0.24, ease: 'power3.in' })
+      .to(overlay, { x: 6, duration: 0.04, yoyo: true, repeat: 3, ease: 'none' }) // slam shake
+      .set(seed, { opacity: 0 })
+      .to(plant, { scale: 1, duration: 0.32, ease: 'back.out(3.2)' }, 0.3)
+      .call(
+        () => {
+          const r = plant.getBoundingClientRect();
+          void burstCoins(coins, { x: r.left + r.width / 2, y: r.top + r.height / 2 }, { count: 22 });
+          void scrambleTo(title, 'MONEY PLANT.', 400);
+        },
+        [],
+        0.34,
+      )
+      .from(title, { scale: 0.6, opacity: 0, duration: 0.3, ease: 'back.out(2.5)' }, 0.4)
+      .to({}, { duration: 0.25 }); // hold, then finish() reveals the hero
+  }
+
+  document.addEventListener('astro:page-load', runIntro, { once: true });
+</script>

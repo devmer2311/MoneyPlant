@@ -281,7 +281,7 @@ List<PlannedReminder> planReminders(
 int monthlySpending(Iterable<Entry> entries, DateTime now) => entries
     .where(
       (e) =>
-          !e.incoming &&
+          e.kind == 'expense' &&
           !e.date.isAfter(now) &&
           e.date.year == now.year &&
           e.date.month == now.month,

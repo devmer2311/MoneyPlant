@@ -1,0 +1,226 @@
+---
+// "A year in the garden": the phone stays sticky while chapters scroll past and
+// swap its screen. On mobile the phone unsticks and each chapter stacks as a card.
+import { getImage } from 'astro:assets';
+import overviewShot from '../../assets/screens/garden/overview.png';
+import splitsShot from '../../assets/screens/garden/splits.png';
+import personShot from '../../assets/screens/garden/person.png';
+import insightsShot from '../../assets/screens/garden/insights.png';
+import settingsShot from '../../assets/screens/garden/settings.png';
+import { themePacks } from '../../lib/themes.ts';
+
+const shots = { overview: overviewShot, splits: splitsShot, person: personShot, insights: insightsShot, settings: settingsShot };
+const screens = Object.fromEntries(
+  await Promise.all(
+    Object.entries(shots).map(async ([k, src]) => [k, await getImage({ src, format: 'webp', width: 560 })]),
+  ),
+) as Record<keyof typeof shots, Awaited<ReturnType<typeof getImage>>>;
+// Small variants for the stacked mobile cards (rendered at 192px wide).
+const thumbs = Object.fromEntries(
+  await Promise.all(
+    Object.entries(shots).map(async ([k, src]) => [k, await getImage({ src, format: 'webp', width: 384 })]),
+  ),
+) as Record<keyof typeof shots, Awaited<ReturnType<typeof getImage>>>;
+
+type Chapter = {
+  id: string;
+  screen: keyof typeof shots;
+  title: string;
+  body: string;
+};
+const chapters: Chapter[] = [
+  { id: 'track', screen: 'overview', title: 'Track the little things', body: 'Chai, cabs, groceries. Two taps and it lands in the right category.' },
+  { id: 'split', screen: 'splits', title: 'Split any bill, paise-exact', body: 'Equal, percent, shares or per item. Everyone sees exactly what they owe.' },
+  { id: 'pdf', screen: 'person', title: 'Statements people actually read', body: 'A cute PDF statement per person, with a UPI QR stamped on so settling is one scan.' },
+  { id: 'import', screen: 'insights', title: 'Bank statements import themselves', body: 'Drop a CSV and rows tick in, categorised. Flip one into a split on the spot.' },
+  { id: 'groups', screen: 'splits', title: 'Groups untangle who pays whom', body: 'A trip of ten transactions collapses into the two payments that settle it.' },
+  { id: 'themes', screen: 'settings', title: 'Five gardens to grow in', body: 'Garden, Sakura, Neon, Mango, Ocean. Every screen re-blooms in one tap.' },
+];
+---
+
+<section id="story" class="relative">
+  <div class="container-site">
+    <h2 class="m-0 max-w-[16ch]" style="font-size: clamp(2.2rem, 5vw, 3.6rem);">A year in the garden</h2>
+
+    <div class="mt-14 gap-16 md:grid md:grid-cols-2">
+      <div class="story-copy order-2">
+        {chapters.map((c, i) => (
+          <div class="chapter flex flex-col justify-center gap-4 py-16 md:min-h-[80dvh]" data-chapter={c.id} data-screen={c.screen} data-index={i}>
+            <img
+              src={thumbs[c.screen].src}
+              width={thumbs[c.screen].attributes.width}
+              height={thumbs[c.screen].attributes.height}
+              alt=""
+              loading="lazy"
+              class="mb-2 w-48 rounded-2xl border md:hidden"
+              style="border-color: color-mix(in srgb, var(--ink) 15%, transparent);"
+            />
+            <h3 class="chapter-title m-0 text-3xl md:text-4xl">{c.title}</h3>
+            <p class="m-0 max-w-[42ch] text-lg text-ink-muted">{c.body}</p>
+
+            {c.id === 'track' && (
+              <p class="m-0 flex flex-wrap gap-2" aria-hidden="true">
+                {['☕ Chai ₹25', '🛺 Auto ₹60', '🛒 Groceries ₹842', '🍿 Movie ₹350'].map((chip) => (
+                  <span class="fx-chip rounded-full px-3 py-1 text-sm font-bold" style="background: var(--surface-alt);">{chip}</span>
+                ))}
+              </p>
+            )}
+            {c.id === 'split' && (
+              <div aria-hidden="true">
+                <div class="flex h-4 w-64 max-w-full overflow-hidden rounded-full">
+                  {[1, 2, 3, 4].map((n) => (
+                    <span class="fx-slice h-full w-1/4" style={`background: var(--chart-${n});`}></span>
+                  ))}
+                </div>
+                <p class="m-0 mt-2 flex gap-3 text-sm font-bold text-ink-muted">
+                  <span>You</span><span>Aarav</span><span>Meera</span><span class="fx-settle">Rohan <span class="fx-tick">✅</span></span>
+                </p>
+              </div>
+            )}
+            {c.id === 'pdf' && (
+              <div class="fx-printer relative h-20 w-56 overflow-hidden" aria-hidden="true">
+                <div class="absolute top-0 h-3 w-full rounded-full" style="background: var(--surface-alt);"></div>
+                <div class="fx-paper absolute left-6 top-3 w-40 rounded-md border p-2 text-[10px] leading-tight" style="background: var(--surface); border-color: color-mix(in srgb, var(--ink) 15%, transparent);">
+                  <strong>🌱 Statement · Meera</strong><br />
+                  3 splits · ₹4,000 pending<br />
+                  <span class="mt-1 inline-block rounded-sm p-0.5" style="background: var(--surface-alt);">▦ UPI QR</span>
+                </div>
+              </div>
+            )}
+            {c.id === 'import' && (
+              <ul class="m-0 w-64 list-none p-0 text-sm" aria-hidden="true">
+                {['Salary credit', 'DMart 842.00', 'Metro top-up', 'Karavalli 4,863.00'].map((row, ri) => (
+                  <li class="fx-row flex items-center justify-between border-b py-1.5" style={`border-color: color-mix(in srgb, var(--ink) 8%, transparent); transition-delay: ${ri * 180}ms;`}>
+                    <span class="truncate">{row}</span>
+                    <span class="fx-row-tick font-bold" style="color: var(--leaf-mid);">{ri === 3 ? '⑂ split' : '✓'}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {c.id === 'groups' && (
+              <svg class="fx-graph w-64" viewBox="0 0 240 120" aria-hidden="true">
+                <g class="fx-messy" stroke="var(--ink-muted)" stroke-width="1.5" fill="none" opacity="0.7">
+                  <path d="M20 20 C 90 90, 150 10, 220 60" />
+                  <path d="M20 60 C 100 -10, 140 130, 220 20" />
+                  <path d="M20 100 C 80 40, 160 110, 220 100" />
+                  <path d="M220 60 C 150 100, 90 20, 20 20" />
+                </g>
+                <g class="fx-simple" stroke="var(--brand)" stroke-width="3" fill="none" opacity="0" stroke-linecap="round">
+                  <path d="M30 40 L 210 40" />
+                  <path d="M30 85 L 210 85" />
+                </g>
+                <g font-size="11" font-weight="bold" fill="var(--ink)">
+                  <text x="6" y="44">R</text><text x="222" y="44">M</text>
+                  <text x="6" y="89">A</text><text x="222" y="89">You</text>
+                </g>
+              </svg>
+            )}
+            {c.id === 'themes' && (
+              <p class="m-0 flex gap-2" aria-hidden="true">
+                {themePacks.map((p) => (
+                  <span class="fx-orb inline-block size-6 rounded-full" style={`background: ${p.dark.brand === '#0E0E1A' ? p.dark.receive : p.dark.brand};`}></span>
+                ))}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div class="order-1 hidden md:block">
+        <div class="sticky top-[12vh]">
+          <div class="glow -inset-14" aria-hidden="true"></div>
+          <div id="story-phone" class="relative mx-auto w-[300px] overflow-hidden rounded-[38px] border-4 theme-fade" style="border-color: color-mix(in srgb, var(--ink) 22%, var(--canvas)); background: var(--hero);">
+            {Object.entries(screens).map(([key, img], i) => (
+              <img
+                src={img.src}
+                width={img.attributes.width}
+                height={img.attributes.height}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                data-story-screen={key}
+                class="w-full transition-opacity duration-500"
+                style={`display: block; ${i === 0 ? '' : 'position: absolute; inset: 0; opacity: 0;'}`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* Chapter FX rest states; .active plays them. All transform/opacity only. */
+  .fx-chip { opacity: 0; translate: 0 18px; transition: opacity 0.4s, translate 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+  .chapter.active .fx-chip { opacity: 1; translate: 0 0; }
+  .chapter.active .fx-chip:nth-child(2) { transition-delay: 0.1s; }
+  .chapter.active .fx-chip:nth-child(3) { transition-delay: 0.2s; }
+  .chapter.active .fx-chip:nth-child(4) { transition-delay: 0.3s; }
+
+  .fx-slice { scale: 0 1; transform-origin: left; transition: scale 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+  .chapter.active .fx-slice:nth-child(1) { scale: 1 1; }
+  .chapter.active .fx-slice:nth-child(2) { scale: 1 1; transition-delay: 0.12s; }
+  .chapter.active .fx-slice:nth-child(3) { scale: 1 1; transition-delay: 0.24s; }
+  .chapter.active .fx-slice:nth-child(4) { scale: 1 1; transition-delay: 0.36s; }
+  .fx-tick { opacity: 0; transition: opacity 0.3s 0.8s; }
+  .chapter.active .fx-tick { opacity: 1; }
+
+  .fx-paper { translate: 0 -110%; transition: translate 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.2s; }
+  .chapter.active .fx-paper { translate: 0 0; }
+
+  .fx-row { opacity: 0.55; transition: opacity 0.4s; }
+  .fx-row-tick { opacity: 0; scale: 0.5; transition: opacity 0.3s, scale 0.3s cubic-bezier(0.16, 1, 0.3, 1); transition-delay: inherit; }
+  .chapter.active .fx-row { opacity: 1; }
+  .chapter.active .fx-row-tick { opacity: 1; scale: 1; }
+
+  .fx-messy { transition: opacity 0.6s 0.2s; }
+  .fx-simple { transition: opacity 0.6s 0.7s; }
+  .chapter.active .fx-messy { opacity: 0.12; }
+  .chapter.active .fx-simple { opacity: 1; }
+
+  .fx-orb { scale: 0; transition: scale 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .chapter.active .fx-orb { scale: 1; }
+  .chapter.active .fx-orb:nth-child(2) { transition-delay: 0.08s; }
+  .chapter.active .fx-orb:nth-child(3) { transition-delay: 0.16s; }
+  .chapter.active .fx-orb:nth-child(4) { transition-delay: 0.24s; }
+  .chapter.active .fx-orb:nth-child(5) { transition-delay: 0.32s; }
+
+  .chapter-title { opacity: 0.6; transition: opacity 0.4s; }
+  .chapter.active .chapter-title { opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chapter .chapter-title,
+    .chapter [class^='fx-'],
+    .chapter [class*=' fx-'] {
+      opacity: 1 !important;
+      translate: 0 0 !important;
+      scale: 1 1 !important;
+    }
+  }
+</style>
+
+<script>
+  function init() {
+    const chapters = [...document.querySelectorAll<HTMLElement>('.chapter')];
+    if (!chapters.length) return;
+    const screens = [...document.querySelectorAll<HTMLImageElement>('[data-story-screen]')];
+    const showScreen = (key: string) => {
+      for (const s of screens) s.style.opacity = s.dataset.storyScreen === key ? '1' : '0';
+    };
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const el = entry.target as HTMLElement;
+          if (entry.isIntersecting) {
+            el.classList.add('active');
+            showScreen(el.dataset.screen!);
+          }
+        }
+      },
+      { rootMargin: '-35% 0px -35% 0px' },
+    );
+    for (const c of chapters) io.observe(c);
+  }
+  document.addEventListener('astro:page-load', init);
+</script>

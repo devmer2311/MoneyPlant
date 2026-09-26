@@ -1,3 +1,5 @@
+import '../core/recurring.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -42,18 +44,18 @@ class HomePage extends ConsumerWidget {
                 children: [left, const SizedBox(height: 20), right],
               );
         final hero = Surface(
-          color: Palette.forest,
+          color: context.tokens.hero,
           padding: const EdgeInsets.all(28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'AVAILABLE BALANCE',
                       style: TextStyle(
-                        color: Color(0xFFCBD9CA),
+                        color: context.tokens.heroMuted,
                         fontSize: 10,
                         letterSpacing: 1.8,
                         fontWeight: FontWeight.w600,
@@ -72,11 +74,14 @@ class HomePage extends ConsumerWidget {
                   builder: (context, value, _) => Text(
                     money(value.round(), currency),
                     style: context.type.displayLarge?.copyWith(
-                      color: const Color(0xFFF4F8EC),
-                      shadows: const [
-                        Shadow(color: Color(0xFF0F2A20), offset: Offset(0, 3)),
+                      color: context.tokens.heroInk,
+                      shadows: [
                         Shadow(
-                          color: Color(0x44000000),
+                          color: context.tokens.heroShadow,
+                          offset: Offset(0, 3),
+                        ),
+                        Shadow(
+                          color: context.tokens.translucentShadow,
                           offset: Offset(0, 7),
                           blurRadius: 16,
                         ),
@@ -90,10 +95,10 @@ class HomePage extends ConsumerWidget {
                 store.data.entries.isEmpty
                     ? 'A fresh start. So much room to grow.'
                     : 'A little awareness makes a big difference.',
-                style: const TextStyle(color: Color(0xFFCBD9CA), fontSize: 12),
+                style: TextStyle(color: context.tokens.heroMuted, fontSize: 12),
               ),
               const SizedBox(height: 28),
-              const Divider(color: Color(0xFF446050), height: 1),
+              Divider(color: context.tokens.heroDivider, height: 1),
               const SizedBox(height: 23),
               Row(
                 children: [
@@ -102,7 +107,7 @@ class HomePage extends ConsumerWidget {
                       'Income this month',
                       money(store.monthTotal(true, now), currency, true),
                       Icons.south_west,
-                      Palette.lime,
+                      context.tokens.receive,
                     ),
                   ),
                   Expanded(
@@ -110,7 +115,7 @@ class HomePage extends ConsumerWidget {
                       'Spent this month',
                       money(store.monthTotal(false, now), currency, true),
                       Icons.north_east,
-                      const Color(0xFFE7DDF8),
+                      context.tokens.owe,
                     ),
                   ),
                 ],
@@ -119,9 +124,7 @@ class HomePage extends ConsumerWidget {
           ),
         );
         final garden = Surface(
-          color: context.dark
-              ? const Color(0xFF303E2D)
-              : const Color(0xFFEDF1DF),
+          color: context.tokens.savingSurface,
           padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,7 +154,7 @@ class HomePage extends ConsumerWidget {
                 child: LinearProgressIndicator(
                   value: store.stage == 5 ? 1 : (store.xp % 100) / 100,
                   minHeight: 5,
-                  color: context.dark ? Palette.lime : Palette.forest,
+                  color: context.tokens.brand,
                   backgroundColor: context.colors.onSurface.withValues(
                     alpha: .08,
                   ),
@@ -193,9 +196,9 @@ class HomePage extends ConsumerWidget {
                   ),
                 ),
                 if (wide)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 8),
-                    child: Tag('LET’S GROW ↗', color: Palette.lilac),
+                    child: Tag('LET’S GROW ↗', color: context.tokens.owe),
                   ),
               ],
             ),
@@ -215,12 +218,12 @@ class HomePage extends ConsumerWidget {
                     Icons.call_split_rounded,
                     Icons.flag_outlined,
                   ];
-                  const tints = [
-                    Color(0xFFF6C2AE),
-                    Palette.lime,
-                    Palette.lilac,
-                    Color(0xFFBDDDEC),
-                    Color(0xFFF3D99A),
+                  final tints = [
+                    context.tokens.expenseAccent,
+                    context.tokens.receive,
+                    context.tokens.owe,
+                    context.tokens.splitAccent,
+                    context.tokens.goalAccent,
                   ];
                   return Expanded(
                     child: TactileAction(
@@ -244,6 +247,30 @@ class HomePage extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 26),
+            if (store.data.recurring.any((r) => !r.paused))
+              Surface(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionTitle('Upcoming this week'),
+                    ...store.data.recurring.expand(
+                      (r) =>
+                          occurrences(
+                                r,
+                                DateTime.now().add(const Duration(days: 7)),
+                              )
+                              .where((date) => date.isAfter(DateTime.now()))
+                              .map(
+                                (date) => ListTile(
+                                  title: Text(r.title),
+                                  subtitle: Text(dateKey(date)),
+                                  trailing: Text(money(r.amount, currency)),
+                                ),
+                              ),
+                    ),
+                  ],
+                ),
+              ),
             if (!wide) ...[garden, const SizedBox(height: 26)],
             columns(
               Surface(
@@ -272,9 +299,7 @@ class HomePage extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Surface(
-                    color: context.dark
-                        ? const Color(0xFF393045)
-                        : Palette.lilac,
+                    color: context.tokens.oweSurface,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -346,9 +371,7 @@ class HomePage extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: context.dark
-                            ? const Color(0xFF30462E)
-                            : Palette.lime,
+                        color: context.tokens.selectedSurface,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Icon(Icons.flag_outlined, size: 26),
@@ -429,17 +452,17 @@ class _HeroStat extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(color: Color(0xFFCBD9CA), fontSize: 10),
+              style: TextStyle(color: context.tokens.heroMuted, fontSize: 10),
             ),
             const SizedBox(height: 4),
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
                 value,
-                style: const TextStyle(
-                  fontFamily: 'Outfit',
+                style: TextStyle(
+                  fontFamily: context.tokens.displayFont,
                   fontSize: 23,
-                  color: Colors.white,
+                  color: context.tokens.highlight,
                 ),
               ),
             ),

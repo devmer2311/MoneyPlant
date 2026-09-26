@@ -1,0 +1,54 @@
+---
+// Glass card for the newest release: chips, first bullets, full changelog link.
+import type { Release } from '../../lib/releases.ts';
+import { relativeTime } from '../../lib/releases.ts';
+
+interface Props {
+  release: Release;
+}
+const { release } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const bullets = [...release.sections.new, ...release.sections.fixes, ...release.sections.design, ...release.sections.other].slice(0, 5);
+const chips = [
+  { label: '✨ New', count: release.sections.new.length, bg: 'var(--receive)', fg: 'var(--on-receive)' },
+  { label: '🐛 Fixes', count: release.sections.fixes.length, bg: 'var(--owe)', fg: 'var(--on-owe)' },
+  { label: '🎨 Design', count: release.sections.design.length, bg: 'var(--chart-5)', fg: 'var(--on-receive)' },
+].filter((c) => c.count > 0);
+---
+
+<section class="container-site">
+  <div
+    class="relative overflow-hidden rounded-[var(--radius)] border p-8 md:p-10"
+    style="background: color-mix(in srgb, var(--surface) 72%, transparent); backdrop-filter: blur(20px); border-color: color-mix(in srgb, var(--ink) 12%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);"
+  >
+    <div class="glow -right-20 -top-24 size-80" aria-hidden="true"></div>
+    <p class="m-0 text-sm font-bold uppercase tracking-wide text-ink-muted">Fresh from the greenhouse</p>
+    <h2 class="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1" style="font-size: clamp(2rem, 4.5vw, 3rem);">
+      v{release.version}
+      <span class="text-base font-normal text-ink-muted" style="font-family: var(--font-body);">
+        {new Date(release.publishedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} · {relativeTime(release.publishedAt)}
+      </span>
+    </h2>
+    {chips.length > 0 && (
+      <p class="m-0 mt-1 flex flex-wrap gap-2">
+        {chips.map((c) => (
+          <span class="rounded-full px-3 py-1 text-xs font-bold" style={`background: ${c.bg}; color: ${c.fg};`}>
+            {c.label} · {c.count}
+          </span>
+        ))}
+      </p>
+    )}
+    {bullets.length > 0 ? (
+      <ul class="mb-0 mt-5 max-w-[65ch] list-disc space-y-1.5 pl-5 text-ink-muted">
+        {bullets.map((b) => (
+          <li>{b}</li>
+        ))}
+      </ul>
+    ) : (
+      <p class="mt-5 max-w-[65ch] text-ink-muted">The very first public build. Everything is new 🌱</p>
+    )}
+    <a href={`${base}/releases/${release.tag}`} class="mt-6 inline-block font-bold underline-offset-4 hover:underline" style="color: var(--brand);">
+      Full changelog →
+    </a>
+  </div>
+</section>

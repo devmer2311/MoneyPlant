@@ -1,0 +1,60 @@
+---
+// Infinite stats marquee; numbers tick up when scrolled into view, pauses on hover.
+interface Props {
+  downloads: number;
+  releases: number;
+  updatedDaysAgo: number;
+}
+const { downloads, releases, updatedDaysAgo } = Astro.props;
+const updated = updatedDaysAgo <= 0 ? 'updated today' : updatedDaysAgo === 1 ? 'updated yesterday' : `updated ${updatedDaysAgo} days ago`;
+const items = [
+  { text: '🌱 [N] seeds planted', n: downloads },
+  { text: `${releases} release${releases === 1 ? '' : 's'}` },
+  { text: updated },
+  { text: '0 servers' },
+  { text: '0 trackers' },
+  { text: '5 themes' },
+  { text: '100% offline' },
+];
+---
+
+<section class="marquee-section overflow-hidden border-y !py-5" style="border-color: color-mix(in srgb, var(--ink) 10%, transparent); background: var(--surface);" aria-label="Money Plant in numbers">
+  <div class="marquee flex w-max items-center gap-10" aria-hidden="false">
+    {[0, 1].map((copy) => (
+      <ul class="m-0 flex list-none items-center gap-10 p-0 text-lg font-bold" style="font-family: var(--font-display); font-variant-numeric: tabular-nums;" aria-hidden={copy === 1 ? 'true' : undefined}>
+        {items.map((item) => (
+          <li class="flex items-center gap-10 whitespace-nowrap">
+            <span>
+              {item.n != null ? (
+                <>
+                  {item.text.split('[N]')[0]}
+                  <span data-ticker={item.n}>{item.n.toLocaleString('en-IN')}</span>
+                  {item.text.split('[N]')[1]}
+                </>
+              ) : (
+                item.text
+              )}
+            </span>
+            <span style="color: var(--brand);" aria-hidden="true">✦</span>
+          </li>
+        ))}
+      </ul>
+    ))}
+  </div>
+</section>
+
+<style>
+  @media (prefers-reduced-motion: no-preference) {
+    .marquee {
+      animation: marquee-scroll 28s linear infinite;
+    }
+    .marquee-section:hover .marquee {
+      animation-play-state: paused;
+    }
+  }
+  @keyframes marquee-scroll {
+    to {
+      transform: translateX(calc(-50% - 1.25rem));
+    }
+  }
+</style>

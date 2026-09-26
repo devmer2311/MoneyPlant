@@ -1,0 +1,57 @@
+---
+import Base from '../layouts/Base.astro';
+import SplitCalculator from '../components/calc/SplitCalculator.tsx';
+import Hero from '../components/hero/Hero.astro';
+import InstallDrawer from '../components/hero/InstallDrawer.astro';
+import Faq from '../components/home/Faq.astro';
+import FinalCta from '../components/home/FinalCta.astro';
+import LatestReleaseCard from '../components/home/LatestReleaseCard.astro';
+import Privacy from '../components/home/Privacy.astro';
+import StatsMarquee from '../components/home/StatsMarquee.astro';
+import PunchIntro from '../components/intro/PunchIntro.astro';
+import Story from '../components/story/Story.astro';
+import LaserVault from '../components/vault/LaserVault.astro';
+import { getReleases, latestRelease, stableReleases, totalDownloads } from '../lib/releases.ts';
+
+const releases = await getReleases();
+const latest = latestRelease(releases);
+if (!latest) throw new Error('No published release found; cannot build the home page.');
+const updatedDaysAgo = Math.floor((Date.now() - new Date(latest.publishedAt).getTime()) / 86_400_000);
+---
+
+<Base
+  title="Money Plant"
+  description="Grow your money. A private, offline-first expense tracker and bill splitter for Android. No account, no ads, no servers."
+>
+  <PunchIntro />
+  <Hero latest={latest} />
+  <StatsMarquee downloads={totalDownloads(releases)} releases={stableReleases(releases).length} updatedDaysAgo={updatedDaysAgo} />
+  <Story />
+  <LaserVault />
+  <section class="container-site max-w-4xl">
+    <h2 class="m-0" style="font-size: clamp(2.2rem, 5vw, 3.6rem);">Try a split right here</h2>
+    <p class="mt-3 max-w-[55ch] text-ink-muted">
+      The same paise-exact maths the app uses, running in your browser. Not a mock.
+    </p>
+    <div class="mt-8">
+      <SplitCalculator client:visible />
+    </div>
+    <p class="mt-6 text-lg">
+      Now imagine this with UPI QR, PDF statements and reminders.
+      <a href="#seed-area" class="font-bold underline" style="color: var(--brand);">Download ↑</a>
+    </p>
+  </section>
+  <Privacy />
+  <LatestReleaseCard release={latest} />
+  <Faq />
+  <FinalCta version={latest.version} />
+  <InstallDrawer sha256={latest.sha256} apkName={latest.apk?.name} />
+</Base>
+
+<script>
+  import { initLatestCheck } from '../lib/latest';
+  document.addEventListener('astro:page-load', () => {
+    const version = document.querySelector('[data-latest-version]')?.textContent?.replace(/^v/, '');
+    if (version) void initLatestCheck(version);
+  });
+</script>

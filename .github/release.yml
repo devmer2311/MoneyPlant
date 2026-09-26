@@ -1,0 +1,10 @@
+changelog:
+  categories:
+    - title: ✨ New
+      labels: [feature]
+    - title: 🐛 Fixes
+      labels: [bug]
+    - title: 🎨 Design
+      labels: [design]
+    - title: Other
+      labels: ['*']

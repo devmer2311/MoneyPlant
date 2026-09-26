@@ -159,6 +159,31 @@ class ReminderStore extends ChangeNotifier {
     }
     if (!preferences.budgetWarnings) return;
     final month = '${now.year}-${now.month}';
+    for (final category in garden.data.budgets.entries) {
+      final key = '$month:${category.key}';
+      final spend = monthlySpending(
+        garden.data.entries.where((e) => e.category == category.key),
+        now,
+      );
+      final level = nextBudgetWarning(
+        spend,
+        category.value,
+        delivered[key] ?? 0,
+      );
+      if (level > 0) {
+        await gateway.show(
+          1600 + garden.data.budgets.keys.toList().indexOf(category.key),
+          ReminderCopy(
+            '${category.key} budget',
+            '${category.key} budget ka $level% ho gaya. A little check-in 🌱',
+            'insights',
+          ),
+        );
+        delivered = {...delivered, key: level};
+        await _persist(preferences, delivered);
+      }
+    }
+
     final threshold = nextBudgetWarning(
       monthlySpending(garden.data.entries, now),
       preferences.budget,

@@ -8,19 +8,20 @@ import '../core/design.dart';
 /// Painted by Flutter, so the same sculpted controls work offline on Android.
 class DepthIcon extends StatelessWidget {
   final IconData icon;
-  final Color tint;
+  final Color? tint;
   final double size;
   final bool raised;
   const DepthIcon(
     this.icon, {
     super.key,
-    this.tint = Palette.lime,
+    this.tint,
     this.size = 52,
     this.raised = true,
   });
   @override
   Widget build(BuildContext context) {
-    final ink = Color.lerp(tint, Palette.forest, .78)!;
+    final tint = this.tint ?? context.tokens.receive;
+    final ink = Color.lerp(tint, context.tokens.hero, .78)!;
     return Container(
       width: size,
       height: size,
@@ -30,14 +31,14 @@ class DepthIcon extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color.lerp(tint, Colors.white, .56)!,
+            Color.lerp(tint, context.tokens.highlight, .56)!,
             tint,
             Color.lerp(tint, ink, .12)!,
           ],
           stops: const [0, .55, 1],
         ),
         border: Border.all(
-          color: Colors.white.withValues(alpha: .45),
+          color: context.tokens.highlight.withValues(alpha: .45),
           width: .8,
         ),
         boxShadow: raised
@@ -45,14 +46,14 @@ class DepthIcon extends StatelessWidget {
                 BoxShadow(
                   color: Color.lerp(
                     tint,
-                    Palette.forest,
+                    context.tokens.hero,
                     .45,
                   )!.withValues(alpha: context.dark ? .42 : .25),
                   offset: const Offset(0, 4),
                   blurRadius: 0,
                 ),
                 BoxShadow(
-                  color: Colors.black.withValues(
+                  color: context.tokens.shadow.withValues(
                     alpha: context.dark ? .22 : .09,
                   ),
                   offset: const Offset(0, 9),
@@ -71,7 +72,7 @@ class DepthIcon extends StatelessWidget {
               width: size * .32,
               height: size * .06,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .5),
+                color: context.tokens.highlight.withValues(alpha: .5),
                 borderRadius: BorderRadius.circular(6),
               ),
             ),
@@ -124,8 +125,8 @@ class _TactileActionState extends State<TactileAction> {
         label: widget.label,
         child: InkWell(
           borderRadius: BorderRadius.circular(22),
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
+          splashColor: context.tokens.transparent,
+          highlightColor: context.tokens.transparent,
           onHighlightChanged: (v) => setState(() => pressed = v),
           onTap: () {
             HapticFeedback.selectionClick();
@@ -212,10 +213,8 @@ class _MantraHeadlineState extends State<MantraHeadline> {
   @override
   Widget build(BuildContext context) {
     final reduced = MediaQuery.disableAnimationsOf(context);
-    final face = context.dark ? Palette.lime : Palette.forest;
-    final side = context.dark
-        ? const Color(0xFF718453)
-        : const Color(0xFFB3C99D);
+    final face = context.tokens.brand;
+    final side = context.tokens.headlineSide;
     return Semantics(
       button: true,
       label: 'Change your money mantra',
@@ -225,8 +224,8 @@ class _MantraHeadlineState extends State<MantraHeadline> {
           setState(() => index = (index + 1) % phrases.length);
         },
         borderRadius: BorderRadius.circular(16),
-        splashColor: Colors.transparent,
-        hoverColor: Colors.transparent,
+        splashColor: context.tokens.transparent,
+        hoverColor: context.tokens.transparent,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -350,9 +349,9 @@ class _FloatingPlantState extends State<FloatingPlant>
       message: 'A little love goes a long way',
       child: InkWell(
         borderRadius: BorderRadius.circular(100),
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        hoverColor: Colors.transparent,
+        splashColor: context.tokens.transparent,
+        highlightColor: context.tokens.transparent,
+        hoverColor: context.tokens.transparent,
         onTap: () {
           HapticFeedback.lightImpact();
           if (!MediaQuery.disableAnimationsOf(context)) motion.forward(from: 0);
@@ -387,9 +386,7 @@ class _FloatingPlantState extends State<FloatingPlant>
                           child: Icon(
                             Icons.auto_awesome_rounded,
                             size: 8 + i * 2,
-                            color: context.dark
-                                ? Palette.lime
-                                : const Color(0xFF779C48),
+                            color: context.tokens.loveSparkle,
                           ),
                         ),
                       );

@@ -1,3 +1,9 @@
+import 'data/update_store.dart';
+import 'features/update_prompt.dart';
+import 'features/import/import_flow.dart';
+import 'shared/lock_screen.dart';
+import 'data/recurring_operations.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -18,20 +24,25 @@ class MoneyPlantApp extends ConsumerWidget {
   const MoneyPlantApp({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = ref.watch(gardenProvider).data.theme;
+    final data = ref.watch(gardenProvider).data;
+    final theme = data.theme;
+    final pack = themePack(data.themePack);
     return MaterialApp(
       title: 'Money Plant',
       debugShowCheckedModeBanner: false,
-      theme: gardenTheme(Brightness.light),
-      darkTheme: gardenTheme(Brightness.dark),
+      theme: buildTheme(pack, Brightness.light),
+      darkTheme: buildTheme(pack, Brightness.dark),
       themeMode: theme == 'system'
           ? ThemeMode.system
           : theme == 'dark'
           ? ThemeMode.dark
           : ThemeMode.light,
-      home: const LaunchExperience(child: GardenShell()),
-      builder: (context, child) =>
-          GardenNoticeHost(key: gardenNoticeKey, child: child!),
+      home: const LaunchExperience(
+        child: UpdatePromptHost(child: GardenShell()),
+      ),
+      builder: (context, child) => LockGate(
+        child: GardenNoticeHost(key: gardenNoticeKey, child: child!),
+      ),
     );
   }
 }
@@ -60,6 +71,10 @@ class _GardenShellState extends ConsumerState<GardenShell>
     if (destination == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (destination == 'app-update') {
+        ref.read(updateProvider).check(notificationTap: true);
+        return;
+      }
       Navigator.of(context).popUntil((route) => route.isFirst);
       navigate(
         destination == 'splits'
@@ -75,7 +90,17 @@ class _GardenShellState extends ConsumerState<GardenShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) reminders.refresh();
+    if (state == AppLifecycleState.resumed) {
+      reminders.refresh();
+      if (ref.read(updateProvider).ready) {
+        ref.read(updateProvider).check(resume: true);
+      }
+      ref.read(gardenProvider).runRecurring().catchError((Object e) {
+        if (mounted) {
+          toast(context, 'Recurring entries could not be saved. Try again.');
+        }
+      });
+    }
   }
 
   @override
@@ -125,10 +150,8 @@ class _GardenShellState extends ConsumerState<GardenShell>
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Material(
                     color: index == i
-                        ? (context.dark
-                              ? const Color(0xFF30462E)
-                              : Palette.lime)
-                        : Colors.transparent,
+                        ? (context.tokens.selectedSurface)
+                        : context.tokens.transparent,
                     borderRadius: BorderRadius.circular(18),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(18),
@@ -144,7 +167,9 @@ class _GardenShellState extends ConsumerState<GardenShell>
                               icons[i],
                               size: 31,
                               raised: index == i,
-                              tint: index == i ? Palette.lime : Palette.lilac,
+                              tint: index == i
+                                  ? context.tokens.receive
+                                  : context.tokens.owe,
                             ),
                             const SizedBox(width: 14),
                             Text(names[i], style: context.type.titleMedium),
@@ -163,9 +188,7 @@ class _GardenShellState extends ConsumerState<GardenShell>
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: context.dark
-                      ? const Color(0xFF263D2B)
-                      : const Color(0xFFECF0DF),
+                  color: context.tokens.navigation,
                   borderRadius: BorderRadius.circular(22),
                 ),
                 child: Column(
@@ -206,10 +229,12 @@ class _GardenShellState extends ConsumerState<GardenShell>
                     borderRadius: BorderRadius.circular(22),
                     onTap: () => navigate(i),
                     child: AnimatedContainer(
-                      duration: Palette.motion,
+                      duration: GardenMotion.duration,
                       padding: const EdgeInsets.symmetric(vertical: 11),
                       decoration: BoxDecoration(
-                        color: index == i ? Palette.lime : Colors.transparent,
+                        color: index == i
+                            ? context.tokens.receive
+                            : context.tokens.transparent,
                         borderRadius: BorderRadius.circular(22),
                       ),
                       child: Column(
@@ -219,17 +244,15 @@ class _GardenShellState extends ConsumerState<GardenShell>
                             scale: index == i ? 1.07 : .9,
                             duration: MediaQuery.disableAnimationsOf(context)
                                 ? Duration.zero
-                                : Palette.motion,
+                                : GardenMotion.duration,
                             curve: Curves.easeOutBack,
                             child: DepthIcon(
                               icons[i],
                               size: 28,
                               raised: index == i,
                               tint: index == i
-                                  ? Palette.lime
-                                  : context.dark
-                                  ? const Color(0xFFA9B5A9)
-                                  : const Color(0xFFE3E7DC),
+                                  ? context.tokens.receive
+                                  : context.tokens.navigationInk,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -239,7 +262,7 @@ class _GardenShellState extends ConsumerState<GardenShell>
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                               color: index == i
-                                  ? Palette.ink
+                                  ? context.tokens.onReceive
                                   : context.colors.onSurfaceVariant,
                             ),
                           ),
@@ -341,7 +364,7 @@ class _GardenShellState extends ConsumerState<GardenShell>
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 1200),
                           child: AnimatedSwitcher(
-                            duration: Palette.motion,
+                            duration: GardenMotion.duration,
                             child: KeyedSubtree(
                               key: ValueKey(index),
                               child: Arrival(child: page),
@@ -368,7 +391,39 @@ class _GardenShellState extends ConsumerState<GardenShell>
       floatingActionButton: index == 4
           ? FloatingActionButton(
               tooltip: 'Add transaction',
-              onPressed: () => openComposer(context),
+              onPressed: () => sheet(
+                context,
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ...['Expense', 'Income', 'Split', 'Task'].map(
+                      (mode) => ListTile(
+                        title: Text(mode),
+                        onTap: () {
+                          Navigator.pop(context);
+                          openComposer(
+                            context,
+                            mode: mode == 'Split'
+                                ? 'expense'
+                                : mode.toLowerCase(),
+                            split: mode == 'Split',
+                          );
+                        },
+                      ),
+                    ),
+                    ListTile(
+                      title: const Text('Import statement'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ImportFlow()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
               child: const Icon(Icons.add),
             )
           : null,

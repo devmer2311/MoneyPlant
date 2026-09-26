@@ -27,7 +27,7 @@ class Entry {
   final String id, title, category, kind, notes;
   final int amount;
   final DateTime date, createdAt;
-  final String? splitId, goalId;
+  final String? splitId, goalId, importRef, recurringId, paymentId;
   const Entry({
     required this.id,
     required this.title,
@@ -39,6 +39,9 @@ class Entry {
     this.notes = '',
     this.splitId,
     this.goalId,
+    this.importRef,
+    this.recurringId,
+    this.paymentId,
   });
   bool get incoming => kind == 'income' || kind == 'reimbursement';
   Json toJson() => {
@@ -52,6 +55,9 @@ class Entry {
     'notes': notes,
     'splitId': splitId,
     'goalId': goalId,
+    'importRef': importRef,
+    'recurringId': recurringId,
+    'paymentId': paymentId,
   };
   factory Entry.fromJson(Json j) => Entry(
     id: j['id'],
@@ -64,6 +70,9 @@ class Entry {
     notes: j['notes'] ?? '',
     splitId: j['splitId'],
     goalId: j['goalId'],
+    importRef: j['importRef'],
+    recurringId: j['recurringId'],
+    paymentId: j['paymentId'],
   );
 }
 
@@ -166,7 +175,9 @@ class Person {
 enum SplitMethod { equal, custom, percentage, shares }
 
 class BillSplit {
-  final String id, title, payerId;
+  final String id, title, payerId, notes;
+  final String? groupId;
+  final List<SplitItem> items;
   final int total;
   final DateTime date;
   final SplitMethod method;
@@ -179,6 +190,9 @@ class BillSplit {
     required this.method,
     required this.portions,
     this.payerId = 'self',
+    this.groupId,
+    this.items = const [],
+    this.notes = '',
   });
   Json toJson() => {
     'id': id,
@@ -188,6 +202,9 @@ class BillSplit {
     'method': method.name,
     'portions': portions,
     'payerId': payerId,
+    'groupId': groupId,
+    'items': items.map((x) => x.toJson()).toList(),
+    'notes': notes,
   };
   factory BillSplit.fromJson(Json j) => BillSplit(
     id: j['id'],
@@ -197,11 +214,16 @@ class BillSplit {
     method: SplitMethod.values.byName(j['method']),
     portions: Map<String, int>.from(j['portions']),
     payerId: j['payerId'],
+    groupId: j['groupId'],
+    items: (j['items'] as List? ?? [])
+        .map((x) => SplitItem.fromJson(Map<String, dynamic>.from(x)))
+        .toList(),
+    notes: j['notes'] ?? '',
   );
 }
 
 class Payment {
-  final String id, splitId, personId;
+  final String id, splitId, personId, note;
   final int amount;
   final DateTime date;
   const Payment({
@@ -210,8 +232,10 @@ class Payment {
     required this.personId,
     required this.amount,
     required this.date,
+    this.note = '',
   });
   Json toJson() => {
+    'note': note,
     'id': id,
     'splitId': splitId,
     'personId': personId,
@@ -219,6 +243,7 @@ class Payment {
     'date': date.toIso8601String(),
   };
   factory Payment.fromJson(Json j) => Payment(
+    note: j['note'] ?? '',
     id: j['id'],
     splitId: j['splitId'],
     personId: j['personId'],
@@ -262,6 +287,228 @@ List<int> allocateSplit(int total, SplitMethod method, List<int> weights) {
   return result;
 }
 
+class Profile {
+  final String displayName;
+  final String upiId;
+  final String payeeName;
+  final bool includeQr;
+  final bool includeUpiLink;
+  const Profile({
+    this.displayName = '',
+    this.upiId = '',
+    this.payeeName = '',
+    this.includeQr = true,
+    this.includeUpiLink = true,
+  });
+  Json toJson() => {
+    'displayName': displayName,
+    'upiId': upiId,
+    'payeeName': payeeName,
+    'includeQr': includeQr,
+    'includeUpiLink': includeUpiLink,
+  };
+  factory Profile.fromJson(Json j) => Profile(
+    displayName: j['displayName'] ?? '',
+    upiId: j['upiId'] ?? '',
+    payeeName: j['payeeName'] ?? '',
+    includeQr: j['includeQr'] ?? true,
+    includeUpiLink: j['includeUpiLink'] ?? true,
+  );
+}
+
+class Group {
+  final String id;
+  final String name;
+  final String emoji;
+  final List<String> memberIds;
+  final DateTime createdAt;
+  final bool archived;
+  const Group({
+    required this.id,
+    required this.name,
+    this.emoji = '🌱',
+    required this.memberIds,
+    required this.createdAt,
+    this.archived = false,
+  });
+  Json toJson() => {
+    'id': id,
+    'name': name,
+    'emoji': emoji,
+    'memberIds': memberIds,
+    'createdAt': createdAt.toIso8601String(),
+    'archived': archived,
+  };
+  factory Group.fromJson(Json j) => Group(
+    id: j['id'],
+    name: j['name'],
+    emoji: j['emoji'] ?? '🌱',
+    memberIds: List<String>.from(j['memberIds']),
+    createdAt: DateTime.parse(j['createdAt']),
+    archived: j['archived'] ?? false,
+  );
+}
+
+class GroupSettlement {
+  final String id;
+  final String groupId;
+  final String fromId;
+  final String toId;
+  final int amount;
+  final DateTime date;
+  final String note;
+  const GroupSettlement({
+    required this.id,
+    required this.groupId,
+    required this.fromId,
+    required this.toId,
+    required this.amount,
+    required this.date,
+    this.note = '',
+  });
+  Json toJson() => {
+    'id': id,
+    'groupId': groupId,
+    'fromId': fromId,
+    'toId': toId,
+    'amount': amount,
+    'date': date.toIso8601String(),
+    'note': note,
+  };
+  factory GroupSettlement.fromJson(Json j) => GroupSettlement(
+    id: j['id'],
+    groupId: j['groupId'],
+    fromId: j['fromId'],
+    toId: j['toId'],
+    amount: j['amount'],
+    date: DateTime.parse(j['date']),
+    note: j['note'] ?? '',
+  );
+}
+
+class SplitItem {
+  final String name;
+  final int amount;
+  final List<String> personIds;
+  final String kind;
+  const SplitItem({
+    required this.name,
+    required this.amount,
+    this.personIds = const [],
+    this.kind = 'item',
+  });
+  Json toJson() => {
+    'name': name,
+    'amount': amount,
+    'personIds': personIds,
+    'kind': kind,
+  };
+  factory SplitItem.fromJson(Json j) => SplitItem(
+    name: j['name'],
+    amount: j['amount'],
+    personIds: List<String>.from(j['personIds'] ?? []),
+    kind: j['kind'] ?? 'item',
+  );
+}
+
+class RecurringRule {
+  final String id;
+  final String title;
+  final int amount;
+  final String category;
+  final String kind;
+  final String frequency;
+  final int? dayOfMonth;
+  final int? weekday;
+  final DateTime startDate;
+  final DateTime? endDate;
+  final bool paused;
+  final String? lastGeneratedPeriod;
+  const RecurringRule({
+    required this.id,
+    required this.title,
+    required this.amount,
+    required this.category,
+    this.kind = 'expense',
+    this.frequency = 'monthly',
+    this.dayOfMonth,
+    this.weekday,
+    required this.startDate,
+    this.endDate,
+    this.paused = false,
+    this.lastGeneratedPeriod,
+  });
+  Json toJson() => {
+    'id': id,
+    'title': title,
+    'amount': amount,
+    'category': category,
+    'kind': kind,
+    'frequency': frequency,
+    'dayOfMonth': dayOfMonth,
+    'weekday': weekday,
+    'startDate': startDate.toIso8601String(),
+    'endDate': endDate?.toIso8601String(),
+    'paused': paused,
+    'lastGeneratedPeriod': lastGeneratedPeriod,
+  };
+  factory RecurringRule.fromJson(Json j) => RecurringRule(
+    id: j['id'],
+    title: j['title'],
+    amount: j['amount'],
+    category: j['category'],
+    kind: j['kind'] ?? 'expense',
+    frequency: j['frequency'] ?? 'monthly',
+    dayOfMonth: j['dayOfMonth'],
+    weekday: j['weekday'],
+    startDate: DateTime.parse(j['startDate']),
+    endDate: j['endDate'] == null ? null : DateTime.parse(j['endDate']),
+    paused: j['paused'] ?? false,
+    lastGeneratedPeriod: j['lastGeneratedPeriod'],
+  );
+}
+
+class ColumnMapping {
+  final int date;
+  final int description;
+  final int? debit;
+  final int? credit;
+  final int? amount;
+  final int? type;
+  final int? reference;
+  final Map<String, String> categoryRules;
+  const ColumnMapping({
+    required this.date,
+    required this.description,
+    this.debit,
+    this.credit,
+    this.amount,
+    this.type,
+    this.reference,
+    this.categoryRules = const {},
+  });
+  Json toJson() => {
+    'date': date,
+    'description': description,
+    'debit': debit,
+    'credit': credit,
+    'amount': amount,
+    'type': type,
+    'reference': reference,
+    'categoryRules': categoryRules,
+  };
+  factory ColumnMapping.fromJson(Json j) => ColumnMapping(
+    date: j['date'],
+    description: j['description'],
+    debit: j['debit'],
+    credit: j['credit'],
+    amount: j['amount'],
+    type: j['type'],
+    reference: j['reference'],
+    categoryRules: Map<String, String>.from(j['categoryRules'] ?? {}),
+  );
+}
+
 class GardenData {
   final List<Entry> entries;
   final List<GardenTask> tasks;
@@ -271,7 +518,15 @@ class GardenData {
   final List<BillSplit> splits;
   final List<Payment> payments;
   final Map<String, String> activity;
-  String theme, currency;
+  static const themePackIds = ['garden', 'sakura', 'neon', 'mango', 'ocean'];
+  String theme, currency, themePack;
+  Profile profile;
+  final List<Group> groups;
+  final List<GroupSettlement> groupSettlements;
+  final List<RecurringRule> recurring;
+  final Map<String, int> budgets;
+  final Map<String, ColumnMapping> importMappings;
+  bool appLock;
   GardenData({
     List<Entry>? entries,
     List<GardenTask>? tasks,
@@ -281,6 +536,14 @@ class GardenData {
     List<BillSplit>? splits,
     List<Payment>? payments,
     Map<String, String>? activity,
+    this.themePack = 'garden',
+    this.profile = const Profile(),
+    this.appLock = false,
+    List<Group>? groups,
+    List<GroupSettlement>? groupSettlements,
+    List<RecurringRule>? recurring,
+    Map<String, int>? budgets,
+    Map<String, ColumnMapping>? importMappings,
     this.theme = 'light',
     this.currency = 'INR',
   }) : entries = entries ?? [],
@@ -290,9 +553,22 @@ class GardenData {
        people = people ?? [],
        splits = splits ?? [],
        payments = payments ?? [],
-       activity = activity ?? {};
+       activity = activity ?? {},
+       groups = groups ?? [],
+       groupSettlements = groupSettlements ?? [],
+       recurring = recurring ?? [],
+       budgets = budgets ?? {},
+       importMappings = importMappings ?? {};
   Json toJson() => {
-    'schemaVersion': 1,
+    'schemaVersion': 2,
+    'themePack': themePack,
+    'profile': profile.toJson(),
+    'appLock': appLock,
+    'groups': groups.map((x) => x.toJson()).toList(),
+    'groupSettlements': groupSettlements.map((x) => x.toJson()).toList(),
+    'recurring': recurring.map((x) => x.toJson()).toList(),
+    'budgets': budgets,
+    'importMappings': importMappings.map((k, v) => MapEntry(k, v.toJson())),
     'entries': entries.map((x) => x.toJson()).toList(),
     'tasks': tasks.map((x) => x.toJson()).toList(),
     'goals': goals.map((x) => x.toJson()).toList(),
@@ -326,6 +602,9 @@ class GardenData {
       splits.map((e) => e.id),
       payments.map((e) => e.id),
       contributions.map((e) => e.id),
+      groups.map((e) => e.id),
+      groupSettlements.map((e) => e.id),
+      recurring.map((e) => e.id),
     ]) {
       require(
         ids.every((id) => id.isNotEmpty) && ids.toSet().length == ids.length,
@@ -343,8 +622,16 @@ class GardenData {
             ].contains(e.kind),
       );
     }
+    require(
+      people.map((p) => p.name.trim().toLowerCase()).toSet().length ==
+          people.length,
+    );
     for (final p in people) {
-      require(p.id != 'self' && p.name.trim().isNotEmpty);
+      require(
+        p.id != 'self' &&
+            p.name.trim().isNotEmpty &&
+            p.name.trim().toLowerCase() != 'you',
+      );
     }
     for (final g in goals) {
       require(g.target > 0 && g.title.trim().isNotEmpty);
@@ -400,19 +687,198 @@ class GardenData {
             ),
       );
     }
+    require(themePackIds.contains(themePack));
+    require(
+      profile.upiId.isEmpty ||
+          RegExp(r'^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,63}$')
+              .hasMatch(profile.upiId),
+    );
+    bool member(String id) => id == 'self' || people.any((p) => p.id == id);
+    for (final task in tasks) {
+      require(task.personId == null || member(task.personId!));
+    }
+    for (final entry in entries) {
+      require(entry.importRef == null || entry.importRef!.trim().isNotEmpty);
+      // Recurring references are provenance: deleting a rule keeps its entries.
+      require(
+        entry.recurringId == null || entry.recurringId!.trim().isNotEmpty,
+      );
+      require(
+        entry.paymentId == null ||
+            payments.any(
+              (p) =>
+                  p.id == entry.paymentId &&
+                  p.splitId == entry.splitId &&
+                  p.amount == entry.amount,
+            ),
+      );
+    }
+    final paymentLinks = entries
+        .map((e) => e.paymentId)
+        .whereType<String>()
+        .toList();
+    require(paymentLinks.toSet().length == paymentLinks.length);
+    for (final group in groups) {
+      require(
+        group.name.trim().isNotEmpty &&
+            group.emoji.trim().isNotEmpty &&
+            group.memberIds.length >= 2,
+      );
+      require(
+        group.memberIds.toSet().length == group.memberIds.length &&
+            group.memberIds.every(member),
+      );
+    }
+    for (final split in splits) {
+      require(
+        split.groupId == null ||
+            groups.any(
+              (g) =>
+                  g.id == split.groupId &&
+                  split.portions.keys.every(g.memberIds.contains),
+            ),
+      );
+      if (split.items.isNotEmpty) {
+        require(
+          split.items.fold(
+                0,
+                (sum, item) =>
+                    sum +
+                    (item.kind == 'discount' ? -item.amount : item.amount),
+              ) ==
+              split.total,
+        );
+        for (final item in split.items) {
+          require(
+            item.name.trim().isNotEmpty &&
+                item.amount > 0 &&
+                ['item', 'tax', 'tip', 'discount'].contains(item.kind),
+          );
+          require(
+            item.personIds.toSet().length == item.personIds.length &&
+                item.personIds.every(split.portions.containsKey),
+          );
+          require(item.kind != 'item' || item.personIds.isNotEmpty);
+        }
+      }
+    }
+    for (final settlement in groupSettlements) {
+      require(settlement.amount > 0 && settlement.fromId != settlement.toId);
+      require(
+        groups.any(
+          (g) =>
+              g.id == settlement.groupId &&
+              g.memberIds.contains(settlement.fromId) &&
+              g.memberIds.contains(settlement.toId),
+        ),
+      );
+    }
+    for (final rule in recurring) {
+      require(
+        rule.title.trim().isNotEmpty &&
+            rule.amount > 0 &&
+            rule.category.trim().isNotEmpty,
+      );
+      require(
+        ['expense', 'income'].contains(rule.kind) &&
+            ['weekly', 'monthly', 'yearly'].contains(rule.frequency),
+      );
+      require(rule.endDate == null || !rule.endDate!.isBefore(rule.startDate));
+      require(
+        rule.weekday == null || (rule.weekday! >= 1 && rule.weekday! <= 7),
+      );
+      require(
+        rule.dayOfMonth == null ||
+            (rule.dayOfMonth! >= 1 && rule.dayOfMonth! <= 31),
+      );
+      require(
+        rule.lastGeneratedPeriod == null ||
+            RegExp(r'^\d{4}(-\d{2}(-\d{2})?)?$')
+                .hasMatch(rule.lastGeneratedPeriod!),
+      );
+    }
+    for (final budget in budgets.entries) {
+      require(budget.key.trim().isNotEmpty && budget.value > 0);
+    }
+    for (final mapping in importMappings.entries) {
+      final value = mapping.value;
+      require(mapping.key.trim().isNotEmpty);
+      final columns = [
+        value.date,
+        value.description,
+        value.debit,
+        value.credit,
+        value.amount,
+        value.type,
+        value.reference,
+      ].whereType<int>().toList();
+      require(
+        columns.every((v) => v >= 0) &&
+            columns.toSet().length == columns.length,
+      );
+      require(
+        (value.amount != null && value.type != null) ||
+            value.debit != null ||
+            value.credit != null,
+      );
+      require(
+        value.categoryRules.entries.every(
+          (e) => e.key.trim().isNotEmpty && e.value.trim().isNotEmpty,
+        ),
+      );
+    }
     for (final date in activity.values) {
       DateTime.parse(date);
     }
   }
 
   factory GardenData.decode(String raw) {
+    try {
+      return GardenData._decode(raw);
+    } on FormatException catch (error) {
+      if (error.message == 'Unsupported backup version.') rethrow;
+      throw const FormatException(
+        'This backup contains invalid or inconsistent data.',
+      );
+    } on Object {
+      throw const FormatException(
+        'This backup contains invalid or inconsistent data.',
+      );
+    }
+  }
+
+  factory GardenData._decode(String raw) {
     final j = jsonDecode(raw) as Json;
-    if (j['schemaVersion'] != 1) {
+    if (![1, 2].contains(j['schemaVersion'])) {
       throw const FormatException('Unsupported backup version.');
     }
     List<T> read<T>(String key, T Function(Json) fn) =>
         (j[key] as List).map((x) => fn(Map<String, dynamic>.from(x))).toList();
-    return GardenData(
+    if (j['themePack'] != null && j['themePack'] is! String) {
+      throw const FormatException(
+        'This backup contains invalid or inconsistent data.',
+      );
+    }
+    final data = GardenData(
+      themePack: themePackIds.contains(j['themePack'])
+          ? j['themePack']
+          : 'garden',
+      profile: Profile.fromJson(Map<String, dynamic>.from(j['profile'] ?? {})),
+      appLock: j['appLock'] ?? false,
+      groups: j['groups'] == null ? [] : read('groups', Group.fromJson),
+      groupSettlements: j['groupSettlements'] == null
+          ? []
+          : read('groupSettlements', GroupSettlement.fromJson),
+      recurring: j['recurring'] == null
+          ? []
+          : read('recurring', RecurringRule.fromJson),
+      budgets: Map<String, int>.from(j['budgets'] ?? {}),
+      importMappings: (j['importMappings'] as Map? ?? {}).map(
+        (k, v) => MapEntry(
+          k as String,
+          ColumnMapping.fromJson(Map<String, dynamic>.from(v)),
+        ),
+      ),
       entries: read('entries', Entry.fromJson),
       tasks: read('tasks', GardenTask.fromJson),
       goals: read('goals', Goal.fromJson),
@@ -424,5 +890,7 @@ class GardenData {
       theme: j['theme'],
       currency: j['currency'],
     );
+    data.validate();
+    return data;
   }
 }

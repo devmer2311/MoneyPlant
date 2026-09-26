@@ -1,3 +1,9 @@
+import 'dart:async';
+
+import 'data/update_store.dart';
+import 'data/update_service.dart';
+import 'data/recurring_operations.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,21 +17,25 @@ Future<void> main() async {
   final store = GardenStore(LocalGardenRepository());
   try {
     await store.load();
+    await store.runRecurring();
     final reminders = ReminderStore(
       store,
       ReminderRepository(),
       AndroidReminderGateway(),
     );
     await reminders.initialize();
+    final updates = UpdateStore(UpdateService(LocalUpdateStorage()));
     runApp(
       ProviderScope(
         overrides: [
+          updateProvider.overrideWith((ref) => updates),
           gardenProvider.overrideWith((ref) => store),
           reminderProvider.overrideWith((ref) => reminders),
         ],
         child: const MoneyPlantApp(),
       ),
     );
+    unawaited(updates.start());
   } catch (_) {
     runApp(
       MaterialApp(

@@ -1,0 +1,260 @@
+---
+// Interactive lock-screen homage: sweeping lasers on canvas, a rotating HUD
+// ring, dust and a scanline. Touching a beam trips the alarm; Unlock opens the
+// vault. Pauses off-screen, static under reduced motion.
+---
+
+<section id="vault" class="relative overflow-hidden !py-0" aria-label="The Laser Vault: Money Plant's app lock">
+  <div class="relative min-h-[88dvh]" style="background: #07100C;">
+    <canvas id="vault-canvas" class="absolute inset-0 size-full" aria-hidden="true"></canvas>
+    <div id="vault-alarm" class="pointer-events-none absolute inset-0 opacity-0" style="box-shadow: inset 0 0 120px 10px rgba(255, 60, 60, 0.55); transition: opacity 0.2s;" aria-hidden="true"></div>
+
+    <div class="relative z-[2] flex min-h-[88dvh] flex-col items-center justify-center gap-6 px-4 py-20 text-center">
+      <p id="vault-intrusion" class="m-0 h-6 font-mono text-sm font-bold tracking-[0.3em] opacity-0" style="color: #FF5C5C;" role="status">
+        ⚠ INTRUSION DETECTED
+      </p>
+      <h2 class="m-0 text-white" style="font-size: clamp(2.2rem, 5vw, 3.6rem); text-shadow: 0 0 40px rgba(220, 245, 165, 0.35);">
+        Go on, try to break in
+      </h2>
+      <p class="m-0 max-w-[40ch] text-lg" style="color: #B8C8BE;">
+        Sweep a finger through the lasers. The app lock is less forgiving.
+      </p>
+      <button
+        id="vault-unlock"
+        type="button"
+        class="rounded-full border-2 px-10 py-3.5 text-lg font-bold backdrop-blur-sm transition-transform hover:scale-105"
+        style="border-color: rgba(220, 245, 165, 0.8); color: #DCF5A5; background: rgba(220, 245, 165, 0.08); font-family: var(--font-display); box-shadow: 0 0 30px rgba(220, 245, 165, 0.25);"
+      >
+        Unlock
+      </button>
+      <p id="vault-reveal" class="m-0 max-w-[36ch] text-xl font-bold text-white opacity-0" style="transition: opacity 0.6s 0.3s;">
+        Fingerprint lock + blur in Recents. Your money, vaulted. 🔐
+      </p>
+    </div>
+  </div>
+</section>
+
+<script>
+  function init() {
+    const canvas = document.getElementById('vault-canvas') as HTMLCanvasElement | null;
+    const section = document.getElementById('vault');
+    const alarm = document.getElementById('vault-alarm');
+    const intrusion = document.getElementById('vault-intrusion');
+    const unlockBtn = document.getElementById('vault-unlock');
+    const reveal = document.getElementById('vault-reveal');
+    if (!canvas || !section || !alarm || !intrusion || !unlockBtn || !reveal) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    type Beam = { phase: number; speed: number; y: number; hot: number };
+    const beams: Beam[] = Array.from({ length: 6 }, (_, i) => ({
+      phase: (i / 6) * Math.PI * 2,
+      speed: 0.35 + (i % 3) * 0.14,
+      y: 0,
+      hot: 0,
+    }));
+    const dust = Array.from({ length: 50 }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      r: Math.random() * 1.6 + 0.4,
+      v: Math.random() * 0.012 + 0.004,
+    }));
+
+    let running = false;
+    let unlocked = false;
+    let retract = 0; // 0 = beams out, 1 = fully retracted
+    let ringGap = 0; // vault door opening angle
+    let flash = 0;
+    let time = 0;
+    let raf = 0;
+    let w = 0;
+    let h = 0;
+    const pointer = { x: -1, y: -1 };
+
+    const resize = () => {
+      const dpr = Math.min(devicePixelRatio, 2);
+      w = canvas.clientWidth;
+      h = canvas.clientHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    addEventListener('resize', resize);
+
+    const beamY = (b: Beam) => h * (0.2 + 0.6 * (0.5 + 0.5 * Math.sin(time * b.speed + b.phase)));
+
+    const trip = () => {
+      if (unlocked) return;
+      alarm.style.opacity = '1';
+      intrusion.style.opacity = '1';
+      setTimeout(() => {
+        alarm.style.opacity = '0';
+        intrusion.style.opacity = '0';
+      }, 900);
+    };
+
+    const strokeBeam = (y: number, color: string, width: number, blur: number, alpha: number) => {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = blur;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    const drawFrame = (dt: number) => {
+      time += dt;
+      ctx.clearRect(0, 0, w, h);
+
+      // Dust drifting up.
+      ctx.fillStyle = 'rgba(220,245,165,0.35)';
+      for (const p of dust) {
+        p.y -= p.v * dt;
+        if (p.y < 0) p.y = 1;
+        ctx.globalAlpha = 0.2 + 0.3 * Math.sin(time + p.x * 9);
+        ctx.beginPath();
+        ctx.arc(p.x * w, p.y * h, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // Lasers: halo, glow, core. Retract them toward the ring when unlocking.
+      const cx = w / 2;
+      const cy = h / 2;
+      for (const b of beams) {
+        b.y = beamY(b);
+        b.hot = Math.max(0, b.hot - dt * 2.8);
+        if (retract >= 1) continue;
+        const y = b.y + (cy - b.y) * retract;
+        const hot = b.hot > 0;
+        const core = hot ? '#FF5C5C' : '#FFFFFF';
+        const glow = hot ? 'rgba(255,60,60,0.55)' : 'rgba(220,245,165,0.5)';
+        ctx.save();
+        if (retract > 0) {
+          ctx.beginPath();
+          const span = (1 - retract) * w * 0.5;
+          ctx.rect(cx - span, 0, span * 2, h);
+          ctx.clip();
+        }
+        strokeBeam(y, glow, 9, 26, 0.5);
+        strokeBeam(y, glow, 4, 14, 0.8);
+        strokeBeam(y, core, 1.4, 6, 1);
+        ctx.restore();
+        if (hot) {
+          // Red spark burst where the pointer crossed.
+          for (let i = 0; i < 3; i++) {
+            ctx.globalAlpha = b.hot;
+            ctx.fillStyle = '#FF8080';
+            ctx.beginPath();
+            ctx.arc(pointer.x + (Math.random() - 0.5) * 30, y + (Math.random() - 0.5) * 14, Math.random() * 2.5 + 1, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      // Rotating HUD lock ring; splits open when unlocked.
+      const R = Math.min(w, h) * 0.17;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.strokeStyle = 'rgba(220,245,165,0.9)';
+      ctx.shadowColor = 'rgba(220,245,165,0.8)';
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 2;
+      const gap = ringGap * Math.PI;
+      for (const dir of [1, -1]) {
+        ctx.beginPath();
+        ctx.arc(0, 0, R, time * 0.6 * dir + gap * dir + 0.15, time * 0.6 * dir + Math.PI * dir - gap * dir - 0.15, dir === -1);
+        ctx.stroke();
+      }
+      ctx.setLineDash([2, 7]);
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 1.28, -time * 0.35, -time * 0.35 + Math.PI * 1.7);
+      ctx.stroke();
+      ctx.restore();
+
+      // Scanline.
+      if (retract < 1) {
+        const sy = (time * 40) % h;
+        ctx.fillStyle = 'rgba(220,245,165,0.05)';
+        ctx.fillRect(0, sy, w, 2);
+      }
+
+      // Unlock flash.
+      if (flash > 0) {
+        flash = Math.max(0, flash - dt * 2.2);
+        ctx.fillStyle = `rgba(255,255,255,${flash})`;
+        ctx.fillRect(0, 0, w, h);
+      }
+    };
+
+    let last = performance.now();
+    const loop = (now: number) => {
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      drawFrame(dt);
+      if (running) raf = requestAnimationFrame(loop);
+    };
+
+    // Static frame for reduced motion; animation loop otherwise, only on screen.
+    if (reduce) {
+      drawFrame(0);
+    } else {
+      const io = new IntersectionObserver(([entry]) => {
+        if (entry!.isIntersecting && !running) {
+          running = true;
+          last = performance.now();
+          raf = requestAnimationFrame(loop);
+        } else if (!entry!.isIntersecting) {
+          running = false;
+          cancelAnimationFrame(raf);
+        }
+      });
+      io.observe(section);
+
+      section.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        pointer.x = e.clientX - rect.left;
+        pointer.y = e.clientY - rect.top;
+        if (unlocked) return;
+        for (const b of beams) {
+          if (Math.abs(pointer.y - b.y) < 8 && b.hot <= 0) {
+            b.hot = 1;
+            trip();
+          }
+        }
+      });
+    }
+
+    unlockBtn.addEventListener('click', () => {
+      if (unlocked) return;
+      unlocked = true;
+      unlockBtn.style.display = 'none';
+      if (reduce) {
+        retract = 1;
+        ringGap = 0.5;
+        reveal.style.opacity = '1';
+        drawFrame(0);
+        return;
+      }
+      const start = performance.now();
+      const openUp = (now: number) => {
+        const t = Math.min((now - start) / 900, 1);
+        retract = Math.min(t * 1.6, 1);
+        ringGap = Math.max(0, (t - 0.45) * 0.9);
+        if (t >= 0.55 && flash === 0) flash = 0.85;
+        if (t < 1) requestAnimationFrame(openUp);
+        else reveal.style.opacity = '1';
+      };
+      requestAnimationFrame(openUp);
+    });
+  }
+  document.addEventListener('astro:page-load', init);
+</script>

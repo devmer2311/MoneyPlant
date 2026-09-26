@@ -1,0 +1,72 @@
+---
+// Animated accordion built on native <details>, one open at a time.
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const faqs = [
+  {
+    q: 'Is it safe to install an APK?',
+    a: `This one, yes: the APK is built in public by a GitHub Action from the open source code, signed, and published on GitHub Releases. Android will ask you to allow installs from your browser once, which is normal for apps outside the Play Store.`,
+  },
+  {
+    q: 'How do I verify the download?',
+    a: `Each release ships a SHA-256 checksum next to the APK. Compare it with "certutil -hashfile <file> SHA256" on Windows or "sha256sum <file>" on Linux and macOS. The full steps are on the install page.`,
+  },
+  {
+    q: "Why isn't it on the Play Store?",
+    a: `Play Store publishing costs money and adds review lag to every release. GitHub Releases keeps Money Plant free, instant and transparent. A store listing may still happen later.`,
+  },
+  {
+    q: 'Does it need internet?',
+    a: `No. Tracking, splits, budgets, statements and themes all work fully offline. The only network use is when you tap a link out, like paying a friend over UPI.`,
+  },
+  {
+    q: 'How do updates work?',
+    a: `Download the new APK and install it over the old one. Android treats it as an update because every release is signed with the same key, so your data stays exactly where it was.`,
+  },
+  {
+    q: 'What about iPhone?',
+    a: `Android only for now 🌱 The app is built with Flutter, so an iOS build is possible, but distributing it outside the App Store is much harder. Watch the releases page.`,
+  },
+  {
+    q: "Where's my data stored?",
+    a: `In the app's private storage on your phone, as one small JSON garden. No cloud copy exists unless you export one yourself.`,
+  },
+  {
+    q: 'How do I back up?',
+    a: `Settings → Backup exports a single file with everything. Keep it in your own drive or file manager; restoring it on a new phone brings your whole garden back.`,
+  },
+];
+---
+
+<section class="container-site max-w-3xl">
+  <h2 class="m-0" style="font-size: clamp(2.2rem, 5vw, 3.6rem);">Curious minds ask</h2>
+  <div class="mt-8">
+    {faqs.map((f) => (
+      <details class="faq-item group border-b" style="border-color: color-mix(in srgb, var(--ink) 10%, transparent);" name="faq">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-lg font-bold [&::-webkit-details-marker]:hidden">
+          {f.q}
+          <span class="shrink-0 text-xl transition-transform duration-300 group-open:rotate-45" style="color: var(--brand);" aria-hidden="true">＋</span>
+        </summary>
+        <p class="faq-body mt-0 max-w-[65ch] pb-5 text-ink-muted">{f.a}</p>
+      </details>
+    ))}
+  </div>
+  <p class="mt-6 text-sm text-ink-muted">
+    Something else on your mind? <a href="https://github.com/devmer2311/MoneyPlant/issues" rel="noopener" class="font-bold underline" style="color: var(--brand);">Ask on GitHub</a>
+    or read the <a href={`${base}/install`} class="font-bold underline" style="color: var(--brand);">install guide</a>.
+  </p>
+</section>
+
+<style>
+  @media (prefers-reduced-motion: no-preference) {
+    .faq-item::details-content {
+      block-size: 0;
+      overflow: hidden;
+      transition: block-size 0.35s cubic-bezier(0.16, 1, 0.3, 1), content-visibility 0.35s allow-discrete;
+    }
+    .faq-item[open]::details-content {
+      block-size: auto;
+      /* Interpolate to auto where supported. */
+      interpolate-size: allow-keywords;
+    }
+  }
+</style>

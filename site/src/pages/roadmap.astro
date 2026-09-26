@@ -1,0 +1,85 @@
+---
+import Base from '../layouts/Base.astro';
+import roadmap from '../data/roadmap.json';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+type Item = { title: string; note: string; status: string; progress?: number; release?: string };
+const items = roadmap.items as Item[];
+const columns = [
+  { id: 'now', title: 'Growing now 🌿', hint: 'Being built' },
+  { id: 'next', title: 'Next up 🌤️', hint: 'Queued for planting' },
+  { id: 'ideas', title: 'Planted ideas 🫘', hint: 'Seeds, no promises' },
+];
+const shipped = items.filter((i) => i.status === 'shipped');
+---
+
+<Base
+  title="Roadmap · Money Plant"
+  description="What's growing next in Money Plant: features being built, queued, and dreamed about."
+  ogImage={`${base}/og/roadmap.png`}
+>
+  <section class="container-site !pt-14">
+    <h1 class="m-0" style="font-size: clamp(2.6rem, 6vw, 4.5rem); letter-spacing: -0.03em;">Growing next</h1>
+    <p class="mt-3 max-w-[55ch] text-ink-muted">
+      The garden plan, updated by hand with every release. No dates, only order: plants grow when they're ready.
+    </p>
+
+    <div class="mt-12 grid gap-6 md:grid-cols-3">
+      {columns.map((col) => (
+        <section aria-labelledby={`col-${col.id}`}>
+          <h2 id={`col-${col.id}`} class="m-0 text-xl">{col.title}</h2>
+          <p class="mt-1 text-sm text-ink-muted">{col.hint}</p>
+          <ul class="m-0 mt-4 grid list-none gap-4 p-0">
+            {items.filter((i) => i.status === col.id).map((item) => (
+              <li
+                class="tilt-card rounded-[var(--radius)] border p-5 transition-transform duration-200 will-change-transform"
+                style="background: var(--surface); border-color: color-mix(in srgb, var(--ink) 10%, transparent);"
+              >
+                <h3 class="m-0 text-lg">{item.title}</h3>
+                <p class="m-0 mt-1 text-sm text-ink-muted">{item.note}</p>
+                {item.progress != null && (
+                  <div class="mt-3 h-2 overflow-hidden rounded-full" style="background: var(--surface-alt);" role="progressbar" aria-valuenow={item.progress} aria-valuemin="0" aria-valuemax="100" aria-label={`${item.title} progress`}>
+                    <div class="h-full rounded-full" style={`width: ${item.progress}%; background: var(--brand);`}></div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+
+    <section class="mt-16" aria-labelledby="col-shipped">
+      <h2 id="col-shipped" class="m-0 text-xl">Already bloomed 🌸</h2>
+      <ul class="m-0 mt-4 grid list-none gap-4 p-0 md:grid-cols-2">
+        {shipped.map((item) => (
+          <li class="rounded-[var(--radius)] border p-5" style="background: var(--surface-alt); border-color: color-mix(in srgb, var(--ink) 8%, transparent);">
+            <h3 class="m-0 flex items-baseline justify-between gap-3 text-lg">
+              {item.title}
+              {item.release && (
+                <a href={`${base}/releases/${item.release}`} class="text-sm font-bold underline" style="color: var(--brand);">{item.release}</a>
+              )}
+            </h3>
+            <p class="m-0 mt-1 text-sm text-ink-muted">{item.note}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </section>
+</Base>
+
+<script>
+  function init() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || !matchMedia('(pointer: fine)').matches) return;
+    for (const card of document.querySelectorAll<HTMLElement>('.tilt-card')) {
+      card.addEventListener('pointermove', (e) => {
+        const r = card.getBoundingClientRect();
+        const nx = (e.clientX - r.left) / r.width - 0.5;
+        const ny = (e.clientY - r.top) / r.height - 0.5;
+        card.style.transform = `perspective(700px) rotateY(${nx * 8}deg) rotateX(${-ny * 8}deg)`;
+      });
+      card.addEventListener('pointerleave', () => (card.style.transform = ''));
+    }
+  }
+  document.addEventListener('astro:page-load', init);
+</script>
