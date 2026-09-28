@@ -44,6 +44,25 @@ Map<String, dynamic> release(
 };
 
 void main() {
+  test('beta updates stay in beta and survive cached serialization', () {
+    final candidate = release('v2.1.0-beta.6', prerelease: true);
+    expect(newerRelease([candidate], '2.0.1'), isNull);
+    final update = newerRelease(
+      [candidate, release('v3.0.0')],
+      '2.1.0-beta.5',
+      beta: true,
+    );
+    expect(update?.version, '2.1.0-beta.6');
+    expect(
+      AppRelease.parse(update!.toJson(), beta: true)?.version,
+      update.version,
+    );
+    expect(
+      newerRelease([release('v3.0.0')], '2.1.0-beta.5', beta: true),
+      isNull,
+    );
+  });
+
   test(
     'selects newest stable semver, excluding drafts and installed versions',
     () {

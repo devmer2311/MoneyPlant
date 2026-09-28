@@ -2,7 +2,7 @@
 import {readFileSync,writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 const [tag,output]=process.argv.slice(2);
-if (!/^v\d+\.\d+\.\d+$/.test(tag??'') || !output) throw new Error('Usage: node site/scripts/release-notes.mjs vX.Y.Z output.md');
+if (!/^v\d+\.\d+\.\d+(?:-beta\.[1-9]\d*)?$/.test(tag??'') || !output) throw new Error('Usage: node site/scripts/release-notes.mjs vX.Y.Z[-beta.BUILD] output.md');
 const data=JSON.parse(readFileSync(fileURLToPath(new URL('../src/data/changelog.json',import.meta.url)),'utf8'));
 const release=data[tag];
 const labels={new:'What’s new',fixes:'Bug fixes',design:'Improvements',privacy:'Privacy',backup:'Backup',sync:'Sync',other:'Other changes'};

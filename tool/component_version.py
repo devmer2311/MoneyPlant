@@ -30,8 +30,8 @@ def changed(current, previous):
         return True
     if current == previous:
         return False
-    if semver(current["version"]) <= semver(previous["version"]):
-        raise ValueError("A release change must increase the semantic version")
+    if semver(current["version"]) < semver(previous["version"]) or ("build" not in current and current["version"] == previous["version"]):
+        raise ValueError("A release change must increase the version or Android build")
     if "build" in current and int(current["build"]) <= int(previous["build"]):
         raise ValueError("Android build number must also increase")
     return True
@@ -41,6 +41,22 @@ def unpublished(current_version, prefix, existing):
     if versions and semver(current_version) < max(map(semver, versions)):
         raise ValueError("Version is below an existing release tag")
     return prefix + current_version not in existing
+
+def app_release(current, branch, existing):
+    version, build = current['version'], current['build']
+    beta = branch == 'beta'
+    display = f"{version}-beta.{build}" if beta else version
+    tag = 'v' + display
+    allowed = unpublished(version, 'v', existing)
+    if beta:
+        candidates = [tuple(map(int, m.groups())) for t in existing
+                      if (m := re.fullmatch(r'v(\d+)\.(\d+)\.(\d+)-beta\.(\d+)', t))]
+        if candidates and (*semver(version), int(build)) < max(candidates):
+            raise ValueError('Beta version/build is below a published candidate')
+        allowed = allowed and tag not in existing
+    return dict(version=display, tag=tag, channel='beta' if beta else 'stable',
+                package='app.moneyplant.money_plant' + ('.beta' if beta else ''),
+                allowed=allowed)
 
 def git(*args):
     return subprocess.check_output(["git", *args], text=True).strip()
@@ -80,13 +96,16 @@ if __name__ == "__main__":
     should_build = changed(current, previous)
     prefix = "v" if args.component == "app" else "site-v"
     tag = prefix + current["version"]
-    # A published version can never be reused, lowered, or moved.
-    if os.environ.get("GITHUB_REF") == "refs/heads/main" and should_build:
-        existing = git("tag", "--list", prefix + "*").splitlines()
-        should_build = unpublished(current["version"], prefix, existing)
-        if not should_build:
-            print(f"{tag} already exists; no repeat publication")
-    output = dict(current, tag=tag, changed=str(should_build).lower())
+    branch = os.environ.get('GITHUB_BASE_REF') or os.environ.get('GITHUB_REF', '').removeprefix('refs/heads/')
+    output = dict(current, tag=tag, channel='stable', package='app.moneyplant.money_plant')
+    if args.component == 'app' and branch in ('main', 'beta'):
+        release = app_release(current, branch, git('tag', '--list', 'v*').splitlines())
+        allowed = release.pop('allowed')
+        should_build = should_build and allowed
+        output.update(release)
+    elif branch == 'main' and should_build:
+        should_build = unpublished(current['version'], prefix, git('tag', '--list', prefix + '*').splitlines())
+    output['changed'] = str(should_build).lower()
     if args.output:
         with args.output.open("a") as out:
             out.write("".join(f"{k}={v}\n" for k, v in output.items()))
