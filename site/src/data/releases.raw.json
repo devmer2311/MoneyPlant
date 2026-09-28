@@ -1,0 +1,78 @@
+[
+  {
+    "tag_name": "v2.0.1",
+    "published_at": "2026-09-26T10:34:40Z",
+    "draft": false,
+    "prerelease": false,
+    "body": "<!-- Release notes generated using configuration in .github/release.yml at v2.0.1 -->\n\n\n\n**Full Changelog**: https://github.com/devmer2311/MoneyPlant/compare/v2.0.0...v2.0.1",
+    "assets": [
+      {
+        "name": "money-plant-v2.0.1+4.apk",
+        "browser_download_url": "https://github.com/devmer2311/MoneyPlant/releases/download/v2.0.1/money-plant-v2.0.1%2B4.apk",
+        "size": 74595585,
+        "download_count": 0,
+        "digest": "sha256:48aaa39c67a7ec6c6d28ce26a35cf1198fbd9548af4b101f55e4e739340cfa11"
+      },
+      {
+        "name": "money-plant-v2.0.1+4.apk.sha256",
+        "browser_download_url": "https://github.com/devmer2311/MoneyPlant/releases/download/v2.0.1/money-plant-v2.0.1%2B4.apk.sha256",
+        "size": 91,
+        "download_count": 2,
+        "digest": "sha256:b46e3ddc25e65a4121a0c3c093041d7ce9e207893fde582da6d81246973c643a"
+      },
+      {
+        "name": "money-plant.apk",
+        "browser_download_url": "https://github.com/devmer2311/MoneyPlant/releases/download/v2.0.1/money-plant.apk",
+        "size": 74595585,
+        "download_count": 10,
+        "digest": "sha256:48aaa39c67a7ec6c6d28ce26a35cf1198fbd9548af4b101f55e4e739340cfa11"
+      }
+    ]
+  },
+  {
+    "tag_name": "v2.0.0",
+    "published_at": "2026-09-26T09:53:53Z",
+    "draft": false,
+    "prerelease": false,
+    "body": "<!-- Release notes generated using configuration in .github/release.yml at v2.0.0 -->\n\n\n\n**Full Changelog**: https://github.com/devmer2311/MoneyPlant/compare/v1.0.1...v2.0.0",
+    "assets": [
+      {
+        "name": "money-plant-v2.0.0+3.apk",
+        "browser_download_url": "https://github.com/devmer2311/MoneyPlant/releases/download/v2.0.0/money-plant-v2.0.0%2B3.apk",
+        "size": 74431701,
+        "download_count": 0,
+        "digest": "sha256:07c0cd526df95d0578b4a3e3074e5f5af79265bf92b403626c130a0dd40df607"
+      },
+      {
+        "name": "money-plant-v2.0.0+3.apk.sha256",
+        "browser_download_url": "https://github.com/devmer2311/MoneyPlant/releases/download/v2.0.0/money-plant-v2.0.0%2B3.apk.sha256",
+        "size": 91,
+        "download_count": 3,
+        "digest": "sha256:7fb32c5f4945441c44d708e09a7ad175b760a5bdeab722b52e23f9b2d798ea6d"
+      },
+      {
+        "name": "money-plant.apk",
+        "browser_download_url": "https://github.com/devmer2311/MoneyPlant/releases/download/v2.0.0/money-plant.apk",
+        "size": 74431701,
+        "download_count": 4,
+        "digest": "sha256:07c0cd526df95d0578b4a3e3074e5f5af79265bf92b403626c130a0dd40df607"
+      }
+    ]
+  },
+  {
+    "tag_name": "v1.0.1",
+    "published_at": "2026-09-20T10:28:07Z",
+    "draft": false,
+    "prerelease": false,
+    "body": "**Full Changelog**: https://github.com/devmer2311/MoneyPlant/commits/v1.0.1",
+    "assets": [
+      {
+        "name": "money-plant-v1.0.1+2.apk",
+        "browser_download_url": "https://github.com/devmer2311/MoneyPlant/releases/download/v1.0.1/money-plant-v1.0.1%2B2.apk",
+        "size": 65644796,
+        "download_count": 3,
+        "digest": "sha256:0c74ce482e980894222787bd1cb307a7a993b1e168c678f6fdd40a9fecc34911"
+      }
+    ]
+  }
+]

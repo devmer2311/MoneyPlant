@@ -1,0 +1,178 @@
+---
+interface Props { kind: 'backup' | 'split' }
+const {kind}=Astro.props;
+const backup=kind==='backup';
+const steps=backup ? [
+ {title:'A new phone. An empty garden.',text:'Meet Mira. She opens Money Plant on her new phone, but her records are still on the old one.',left:'Old phone',right:'New phone',status:'Your records stay on your device.',mood:'curious'},
+ {title:'“Where did everything go?”',text:'A new installation starts empty. Signing into the phone does not restore a Money Plant backup.',left:'Records here',right:'Nothing here yet',status:'No automatic cloud copy',mood:'frustrated'},
+ {title:'Save a backup from the old phone.',text:'Open Settings → Export a backup. Save the JSON file somewhere you trust before changing phones.',left:'Export a backup',right:'Waiting to restore',status:'1 · Export your backup',mood:'working'},
+ {title:'Bring that file to the new phone.',text:'Copy your saved backup file to the new device using a method you trust. It contains personal financial records.',left:'Backup saved',right:'File received',status:'2 · Move the backup file',mood:'working'},
+ {title:'Restore. There’s your garden.',text:'Open Settings → Restore a backup → Choose backup file. Confirm that this replaces the new phone’s records, then tap Restore backup. Check your records before removing the old copy.',left:'Keep your backup',right:'Records restored',status:'3 · Restore and check',mood:'happy'},
+] : [
+ {title:'Choose an optional username.',text:'Mira can track custom people locally today. In the planned sharing flow, Mira and Dev choose optional usernames when they want to connect.',left:'Mira',right:'Dev',status:'Concept preview · Planned',mood:'curious'},
+ {title:'Choose one bill to share.',text:'Mira picks a ₹600 lunch split with Dev. Her personal expenses, income and budgets stay on her phone.',left:'Lunch · ₹600',right:'@dev',status:'Only a selected split',mood:'working'},
+ {title:'Share the split with Dev.',text:'The planned service sends the selected shared split to the Money Plant user Mira chose. Custom people stay local.',left:'Mira · ₹300',right:'Dev · ₹300',status:'Optional shared split',mood:'working'},
+ {title:'Offline? Keep going.',text:'If the connection drops, shared changes will wait on the device. Personal tracking continues offline.',left:'Change saved locally',right:'Waiting for connection',status:'Offline · Queued',mood:'curious'},
+ {title:'Reconnect. Catch up together.',text:'When connected again, the selected shared split will synchronize. No full personal ledger is uploaded.',left:'Shared split synced',right:'Shared split synced',status:'Connected · In sync',mood:'happy'},
+];
+const id=`story-${kind}`;
+---
+<section class="container-site how-section" id={backup?'backup-guide':'username-demo'}>
+  <div class="section-heading"><p class="eyebrow">{backup?'A new phone, the same garden':'Upcoming · Not in the current APK'}</p><h2>{backup?'Your records can come along.':'A shared lunch, simply explained.'}</h2><p>{backup?'Follow Mira from an empty new phone to a restored local backup.':'A concept animation of optional username sharing. This feature is planned.'}</p></div>
+  <div class="how-player panel" data-how-player={kind} data-frame="0" data-mood="curious">
+    <div class="how-stage" aria-hidden="true">
+      <svg viewBox="0 0 680 330" class="how-art">
+        <defs>
+          <symbol id={`${id}-mira`} viewBox="0 0 90 170">
+            <path d="M16 36Q9 0 43 1Q79 0 75 39L80 83Q66 95 56 79H28Q11 90 9 77Z" fill="#362730"/>
+            <path d="M31 122l-3 37m28-37 5 37" stroke="#BD825E" stroke-width="10" stroke-linecap="round"/>
+            <path d="M28 158q-15-1-16 8h22l1-8m25 0q13-1 17 8H55l-1-8" fill="#493346"/>
+            <path d="M23 72Q6 84 10 107m55-35q17 16 14 35" fill="none" stroke="#DBA17B" stroke-width="9" stroke-linecap="round"/>
+            <path d="M25 63l-9 18 12 8 1 9-14 34q29 10 59 0L59 98l2-9 13-8-10-18-14-4H37Z" fill="#B65478" stroke="#693C56" stroke-width="2"/>
+            <path d="M29 99h30M32 111l-6 17m19-18v21m12-20 7 17" fill="none" stroke="#F6BACD" stroke-width="2"/>
+            <path d="M35 53v10q8 12 17 0V53" fill="#DBA17B"/>
+            <path d="M32 62q12 16 23 0" fill="none" stroke="#FCE8D9" stroke-width="3"/>
+            <ellipse cx="43" cy="34" rx="23" ry="27" fill="#DBA17B"/>
+            <path d="M19 34Q11 2 42 2q31-2 27 34L59 19Q42 34 23 22l-2 18Z" fill="#362730"/>
+            <path d="M23 11q16-9 29-5" fill="none" stroke="#62414D" stroke-width="3" stroke-linecap="round"/>
+            <path d="m61 15 8-5 2 9-9 2Z" fill="#F3B9CB"/>
+            <circle cx="21" cy="44" r="3" fill="#F5CC71"/><circle cx="65" cy="44" r="3" fill="#F5CC71"/>
+            <path d="m31 33 3 2m18 0 3-2" stroke="#362730" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="35" cy="35" r="2" fill="#302924"/><circle cx="52" cy="35" r="2" fill="#302924"/>
+            <ellipse cx="30" cy="43" rx="4" ry="2" fill="#C67572" opacity=".55"/><ellipse cx="58" cy="43" rx="4" ry="2" fill="#C67572" opacity=".55"/>
+          </symbol>
+          <symbol id={`${id}-dev`} viewBox="0 0 90 170">
+            <path d="M24 108h39l6 48H51l-8-31-5 31H19Z" fill="#35445D"/>
+            <path d="M20 155h18v10H10q-1-6 10-10m31 0h17q11 3 13 10H51Z" fill="#F3EFE6" stroke="#35445D" stroke-width="2"/>
+            <path d="M19 78Q5 91 10 112m58-34q14 14 11 34" fill="none" stroke="#BE845F" stroke-width="10" stroke-linecap="round"/>
+            <path d="M29 62h29l9 49H20Z" fill="#F3EFE6"/>
+            <path d="m30 61-12 6-7 20 14 6-3 21h17V71Zm26 0 14 6 10 20-14 6 1 21H48V71Z" fill="#487A88" stroke="#2C5263" stroke-width="2"/>
+            <path d="m30 63 9 8-10 9m27-17-8 8 11 9M25 97h9m20 0h8" fill="none" stroke="#92C1C5" stroke-width="2"/>
+            <path d="M35 51v12q8 9 17 0V51" fill="#BE845F"/>
+            <ellipse cx="43" cy="34" rx="24" ry="27" fill="#C9916B"/>
+            <path d="M19 35 16 20l5-11 9 1L36 1l12 5 12-3 11 11-3 24-8-16q-17 8-34 0l-2 16Z" fill="#292C39"/>
+            <path d="m31 13 13-5m1 8 12-6" stroke="#4F5366" stroke-width="3" stroke-linecap="round"/>
+            <path d="M31 28h8m10 0h8" stroke="#292C39" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="35" cy="35" r="2" fill="#302924"/><circle cx="53" cy="35" r="2" fill="#302924"/>
+          </symbol>
+        </defs>
+        <ellipse cx="340" cy="295" rx="310" ry="22" fill="var(--surface-alt)"/>
+        <path d="M100 290V130a240 180 0 01480 0v160" fill="var(--surface-alt)" opacity=".65"/>
+        <g class="scene-plant" fill="var(--leaf-mid)"><path d="M42 280q-6-45 12-70q10 27-12 70"/><path d="M42 254q-37-30-30-44q35 4 30 44"/><path d="M42 244q28-42 42-29q-2 28-42 29"/><path d="M24 274h36l-5 28H29Z" fill="var(--coin-shade)"/></g>
+        <g class="scene-person main-person"><g transform={`translate(${backup?292:75} 123)`}>
+          <use href={`#${id}-mira`} width="90" height="170"/>
+          <path class="character-smile" d="M36 46 Q44 52 52 45" fill="none" stroke="#633D2E" stroke-width="2" stroke-linecap="round"/>
+          <path class="character-frown" d="M36 48 Q44 41 52 48 M31 27l8 3 M49 30l8-3" fill="none" stroke="#633D2E" stroke-width="2" stroke-linecap="round"/>
+        </g></g>
+        {!backup && <g class="scene-person friend-person"><g transform="translate(536 123)">
+          <use href={`#${id}-dev`} width="90" height="170"/>
+          <path d="M36 46 Q44 52 52 45" fill="none" stroke="#633D2E" stroke-width="2" stroke-linecap="round"/>
+        </g></g>}
+        <g class="phone-left">
+          <rect x="170" y="61" width="106" height="216" rx="20" fill="var(--canvas)" stroke="var(--ink)" stroke-width="3"/>
+          <rect x="180" y="76" width="86" height="188" rx="12" fill="var(--hero)"/>
+          <rect x="205" y="69" width="36" height="4" rx="2" fill="var(--ink-muted)"/>
+          <text x="223" y="106" text-anchor="middle" fill="var(--hero-ink)" font-size="10" font-weight="bold">My garden</text>
+          <g fill="var(--hero-ink)" opacity=".8"><rect x="191" y="123" width="63" height="5" rx="2"/><rect x="191" y="148" width="43" height="5" rx="2"/><rect x="191" y="173" width="55" height="5" rx="2"/></g>
+          <rect class="selected-record" x="186" y="138" width="74" height="28" rx="6" fill="none" stroke="var(--hero-ink)" stroke-width="2"/>
+          <rect x="190" y="209" width="65" height="24" rx="12" fill="var(--receive)"/>
+          <text x="222" y="225" text-anchor="middle" fill="var(--on-receive)" font-size="9">{backup?'Backup':'Share split'}</text>
+        </g>
+        <g class="phone-right">
+          <rect x="410" y="61" width="106" height="216" rx="20" fill="var(--canvas)" stroke="var(--ink)" stroke-width="3"/>
+          <rect x="420" y="76" width="86" height="188" rx="12" fill="var(--hero)"/>
+          <rect x="445" y="69" width="36" height="4" rx="2" fill="var(--ink-muted)"/>
+          <g class="empty-phone"><text x="463" y="146" text-anchor="middle" fill="var(--hero-ink)" font-size="34">?</text><text x="463" y="170" text-anchor="middle" fill="var(--hero-muted)" font-size="9">{backup?'A fresh start':'Ready to connect'}</text></g>
+          <g class="restored-records"><text x="463" y="107" text-anchor="middle" fill="var(--hero-ink)" font-size="10" font-weight="bold">{backup?'My garden':'Shared lunch'}</text><path d="M438 124h51M438 147h39M438 170h46" stroke="var(--hero-ink)" opacity=".8" stroke-width="5" stroke-linecap="round"/><circle cx="463" cy="224" r="15" fill="var(--receive)"/><path d="m455 224 6 5 10-12" fill="none" stroke="var(--on-receive)" stroke-width="3" stroke-linecap="round"/></g>
+        </g>
+        <path class="transfer-path" d="M267 52Q340 1 418 52" fill="none" stroke="var(--ink-muted)" stroke-width="2" stroke-dasharray="5 7"/>
+        <g class="travelling-file"><rect x="316" y="18" width="48" height="54" rx="9" fill="var(--receive)" stroke="var(--ink)" stroke-width="2"/><path d="M329 34h22M329 43h22M329 52h14" stroke="var(--on-receive)" stroke-width="3" stroke-linecap="round"/></g>
+        <g class="thought-bubble"><path d="M321 71h51q12 0 12 12v22q0 12-12 12h-29l-15 12 3-12h-10q-12 0-12-12V83q0-12 12-12Z" fill="var(--canvas)" stroke="var(--ink-muted)" stroke-width="2"/><text x="347" y="103" text-anchor="middle" font-size="25" fill="var(--ink)">?!</text></g>
+        <g class="success-sparkles" fill="var(--ink-muted)"><path d="m395 26 3 9 9 3-9 3-3 9-3-9-9-3 9-3Z"/><path d="m548 96 3 9 9 3-9 3-3 9-3-9-9-3 9-3Z"/></g>
+      </svg>
+      <div class="phone-labels"><span data-left-label>{steps[0]!.left}</span><span data-right-label>{steps[0]!.right}</span></div>
+      <div class="scene-status badge" data-scene-status>{steps[0]!.status}</div>
+    </div>
+    <div class="how-script">
+      <p class="eyebrow" data-step-label>Scene 1 of {steps.length}</p>
+      {steps.map((step,i)=><div class="how-caption" data-caption={i} hidden={i!==0} data-mood={step.mood} data-left={step.left} data-right={step.right} data-status={step.status}><h3>{step.title}</h3><p>{step.text}</p></div>)}
+      <div class="how-progress" aria-hidden="true">{steps.map((_,i)=><span data-scene={i} class:list={[i===0&&'is-current']}></span>)}</div>
+      <p class="release-status">{backup?'Illustration of the local backup flow. Keep your backup safe; it contains personal data.':'Illustration of a planned feature, not a recording of the current app.'}</p>
+    </div>
+  </div>
+  <details class="story-transcript"><summary>Read all {backup?'backup':'sharing'} steps</summary><ol>{steps.map(s=><li><strong>{s.title}</strong><p>{s.text}</p></li>)}</ol></details>
+</section>
+<style>
+  .how-player { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); align-items:center; gap:2rem; overflow:hidden; }
+  .how-stage { position:relative; padding-block:1rem; min-width:0; text-align:center; }
+  .how-art { display:block; width:100%; height:auto; overflow:visible; }
+  .phone-labels { display:flex; justify-content:space-evenly; gap:1rem; margin:.5rem 0 1rem; font-size:.7rem; font-weight:700; }
+  .scene-status { font-size:.7rem; }
+  .how-caption { min-height:205px; }
+  .how-caption h3 { margin:.5rem 0 1rem; font-size:clamp(1.5rem,2.5vw,2rem); }
+  .how-caption p { color:var(--ink-muted); font-size:.95rem; }
+  .how-progress { display:flex; gap:8px; margin-block:1.5rem; }
+
+  .how-progress span { flex:1; display:block; height:4px; border-radius:4px; background:var(--ink-muted); opacity:.3; }
+  .how-progress .is-current { opacity:1; background:var(--ink); }
+  .story-transcript { margin-top:1rem; max-width:70ch; }
+  .story-transcript summary { min-height:44px; padding:.7rem 0; font-weight:700; }
+  .story-transcript li { margin:1rem 0; }
+  .story-transcript p { color:var(--ink-muted); margin:.25rem 0; }
+  .character-frown,.thought-bubble,.travelling-file,.transfer-path,.restored-records,.selected-record,.success-sparkles { opacity:0; }
+  .how-player[data-mood='frustrated'] .character-frown,.how-player[data-mood='frustrated'] .thought-bubble { opacity:1; }
+  .how-player[data-mood='frustrated'] .character-smile { opacity:0; }
+  .how-player[data-frame='2'] .selected-record,.how-player[data-frame='1'][data-how-player='split'] .selected-record { opacity:1; }
+  .how-player[data-frame='3'] .travelling-file,.how-player[data-frame='3'] .transfer-path,.how-player[data-frame='2'][data-how-player='split'] .travelling-file,.how-player[data-frame='2'][data-how-player='split'] .transfer-path { opacity:1; }
+  .how-player[data-frame='4'] .restored-records,.how-player[data-frame='4'] .success-sparkles,.how-player[data-frame='2'][data-how-player='split'] .restored-records { opacity:1; }
+  .how-player[data-frame='4'] .empty-phone,.how-player[data-frame='2'][data-how-player='split'] .empty-phone { opacity:0; }
+  @media(prefers-reduced-motion:no-preference) {
+    .how-art g,.how-art path { transition:opacity .4s,transform .5s; transform-box:fill-box; transform-origin:center; }
+    .how-player[data-mood='frustrated'] .main-person { animation:headshake .7s ease-in-out 2; }
+    .how-player[data-frame='3'] .travelling-file,.how-player[data-frame='2'][data-how-player='split'] .travelling-file { animation:send-file 2.5s ease-in-out 1 both; }
+    .how-player[data-frame='4'] .success-sparkles { animation:bloom .8s ease-out 1; }
+    .how-player[data-frame='4'] .main-person { animation:happy-hop .7s ease-in-out 2; }
+    .how-player[data-how-player='backup'][data-frame='0'] .phone-left { transform:translate(18px,0) rotate(-4deg); }
+    .how-player[data-how-player='backup'][data-frame='1'] .phone-right { transform:translate(-18px,0) rotate(4deg); }
+    .how-player[data-how-player='backup'][data-frame='2'] .phone-left { transform:translate(12px,-6px); }
+    .how-player.is-paused * { animation-play-state:paused!important; }
+  }
+  @keyframes headshake { 0%,100%{transform:rotate(0)}25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)} }
+  @keyframes send-file { 0%{transform:translate(-92px,35px) rotate(-9deg);opacity:0}20%{opacity:1}80%{opacity:1}100%{transform:translate(113px,55px) rotate(9deg);opacity:0} }
+  @keyframes bloom { 0%{transform:scale(.2)}70%{transform:scale(1.3)}100%{transform:scale(1)} }
+  @keyframes happy-hop { 50%{transform:translateY(-8px)} }
+  @media(max-width:900px) { .how-player { grid-template-columns:minmax(0,1fr);gap:1rem; }.how-stage{max-width:620px;width:100%;margin:auto;}.how-caption{min-height:150px;} }
+  @media(max-width:480px) { .how-player{padding:1rem;}.how-stage{margin-inline:-.5rem;width:calc(100% + 1rem);}.how-caption{min-height:180px;} }
+</style>
+<script>
+  function initStories() {
+    const cleanups: (()=>void)[]=[];
+    document.querySelectorAll<HTMLElement>('[data-how-player]').forEach(player=>{
+      const captions=[...player.querySelectorAll<HTMLElement>('[data-caption]')];
+      const indicators=[...player.querySelectorAll<HTMLElement>('[data-scene]')];
+      const reduced=matchMedia('(prefers-reduced-motion:reduce)');
+      let index=0,timer:ReturnType<typeof setTimeout>|undefined,visible=false;
+      const paint=()=>{
+        player.dataset.frame=String(index);player.dataset.mood=captions[index]!.dataset.mood;
+        captions.forEach((c,i)=>c.hidden=i!==index);indicators.forEach((el,i)=>el.classList.toggle('is-current',i===index));
+        for(const [selector,key] of [['[data-left-label]','left'],['[data-right-label]','right'],['[data-scene-status]','status']] as const) player.querySelector(selector)!.textContent=captions[index]!.dataset[key]!;
+        player.querySelector('[data-step-label]')!.textContent=`Scene ${index+1} of ${captions.length}`;
+      };
+      const schedule=()=>{
+        clearTimeout(timer);
+        player.classList.toggle('is-paused',reduced.matches||!visible||document.hidden);
+        if(reduced.matches||!visible||document.hidden) return;
+        timer=setTimeout(()=>{index=(index+1)%captions.length;paint();schedule();},3500);
+      };
+      const visibility=()=>schedule();
+      document.addEventListener('visibilitychange',visibility);
+      const motion=()=>schedule();
+      reduced.addEventListener('change',motion);
+      const io=new IntersectionObserver(entries=>{visible=entries.some(e=>e.isIntersecting);schedule();},{threshold:.35});
+      io.observe(player);paint();schedule();
+      cleanups.push(()=>{clearTimeout(timer);io.disconnect();document.removeEventListener('visibilitychange',visibility);reduced.removeEventListener('change',motion);});
+    });
+    document.addEventListener('astro:before-swap',()=>cleanups.forEach(fn=>fn()),{once:true});
+  }
+  document.addEventListener('astro:page-load',initStories);
+</script>

@@ -42,14 +42,14 @@ Configure `android/key.properties` with your release keystore before distributin
 
 ## GitHub releases
 
-Pushes to `main` trigger the Android release workflow. Configure these repository Actions secrets first:
+App version changes in `versions/app.yaml` trigger the Android pipeline. Prepare versions on `dev`; merge into `main` to release. Configure these repository Actions secrets first:
 
 - `ANDROID_KEYSTORE_BASE64`
 - `ANDROID_STORE_PASSWORD`
 - `ANDROID_KEY_PASSWORD`
 - `ANDROID_KEY_ALIAS`
 
-The workflow validates and publishes a signed universal APK. An explicitly updated, untagged version is released as written; otherwise the workflow increments the version and Android build number. This release is **v2.0.0 (build 3)**. Pull requests run validation checks. Android device testing is separate from automated checks.
+Dev produces a debug APK artifact with a separate application ID. Only main signs and publishes a production release. Website builds/deployment are independently gated by `versions/site.yaml`. CI never increments versions or commits files. See [the pipeline guide](PIPELINE.md) for the complete workflow. Android device testing is separate from automated checks.
 
 ---
 

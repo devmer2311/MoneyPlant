@@ -17,7 +17,7 @@ export const GET: APIRoute = async ({ site }) => {
       <link>${link(`/releases/${r.tag}`)}</link>
       <guid>${link(`/releases/${r.tag}`)}</guid>
       <pubDate>${new Date(r.publishedAt).toUTCString()}</pubDate>
-      <description>${escapeXml(r.bodyHtml)}</description>
+      <description>${escapeXml([r.name, r.summary, ...Object.values(r.sections).flat()].join('\n'))}</description>
     </item>`,
     )
     .join('\n');

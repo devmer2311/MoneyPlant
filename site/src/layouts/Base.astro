@@ -5,7 +5,6 @@ import manropeBold from '../assets/fonts/Manrope-Bold.woff2?url';
 import outfitBold from '../assets/fonts/Outfit-Bold.woff2?url';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
-import Delight from '../components/ui/Delight.astro';
 
 interface Props {
   title: string;
@@ -37,6 +36,13 @@ const og = ogImage ?? `${base}/og/home.png`;
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={new URL(og, Astro.site)} />
     <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json" set:html={JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'SoftwareApplication',
+      name: 'Money Plant', applicationCategory: 'FinanceApplication', operatingSystem: 'Android',
+      url: new URL(`${base}/`, Astro.site).toString(),
+      description: 'Offline-first personal finance and local bill splitting. No mandatory account. Optional username sharing is planned.',
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'INR' },
+    }).replaceAll('<', '\\u003c')} />
     <link rel="preload" href={outfitBold} as="font" type="font/woff2" crossorigin />
     <link rel="preload" href={manropeBold} as="font" type="font/woff2" crossorigin />
     <script is:inline>
@@ -62,13 +68,10 @@ const og = ogImage ?? `${base}/og/home.png`;
       <slot />
     </main>
     {!noChrome && <SiteFooter />}
-    <Delight />
     <div class="grain" aria-hidden="true"></div>
     <script>
-      import { initScroll } from '../lib/scroll';
       import { storedTheme } from '../lib/theme';
 
-      document.addEventListener('astro:page-load', initScroll);
       // ClientRouter swaps <html> attributes on navigation; reapply the persisted theme.
       document.addEventListener('astro:after-swap', () => {
         const { theme, mode } = storedTheme();

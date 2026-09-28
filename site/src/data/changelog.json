@@ -1,0 +1,52 @@
+{
+  "v2.0.1": {
+    "title": "Clearer statements, easier sharing",
+    "new": [
+      "Export your ledger as a PDF, with preset dates or a custom date range."
+    ],
+    "fixes": [
+      "Share a nudge message separately when a chat app drops the caption from a PDF attachment."
+    ],
+    "design": [
+      "Clearer navigation icons and selected colors across all five themes.",
+      "More breathing room in Groups & trips."
+    ],
+    "privacy": [],
+    "backup": [],
+    "sync": [],
+    "other": []
+  },
+  "v2.0.0": {
+    "title": "More room for your everyday money",
+    "new": [
+      "Check for app updates and open the website or release notes from Money Plant.",
+      "Track groups and trips, with suggested payments to settle up.",
+      "Set category budgets and recurring entries.",
+      "Import CSV, XLSX and supported text-PDF bank statements with a review before saving."
+    ],
+    "fixes": [],
+    "design": [
+      "Choose from five themes with light and dark modes."
+    ],
+    "privacy": [
+      "Protect access with device authentication and hide sensitive screens in Android Recents."
+    ],
+    "backup": [
+      "Export and restore versioned local backups, including older backup files."
+    ],
+    "sync": [],
+    "other": []
+  },
+  "v1.0.1": {
+    "title": "The first public garden",
+    "new": [
+      "Track personal expenses and income, savings goals, and local bill splits."
+    ],
+    "fixes": [],
+    "design": [],
+    "privacy": [],
+    "backup": [],
+    "sync": [],
+    "other": []
+  }
+}

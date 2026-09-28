@@ -1,0 +1,3 @@
+# Prepare on dev, then merge to main. Keep pubspec in sync with the helper.
+version: 2.0.1
+build: 4

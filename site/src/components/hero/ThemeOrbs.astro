@@ -5,11 +5,11 @@ import { themePacks } from '../../lib/themes.ts';
 ---
 
 <div class="flex flex-col items-center gap-3">
-  <div class="flex items-center gap-4" role="group" aria-label="Try a site theme">
+  <div class="flex items-center gap-2" role="group" aria-label="Try a site theme">
     {themePacks.map((pack) => (
       <button
         type="button"
-        class="theme-orb size-9 rounded-full transition-transform duration-200 hover:scale-125 focus-visible:scale-125"
+        class="theme-orb size-11 rounded-full transition-transform duration-200 hover:scale-125 focus-visible:scale-125"
         style={`background: radial-gradient(circle at 32% 30%, ${pack.light.brand}, ${pack.dark.brand}); box-shadow: 0 0 18px color-mix(in srgb, ${pack.dark.brand === '#0E0E1A' ? pack.dark.receive : pack.dark.brand} 65%, transparent);`}
         data-orb={pack.id}
         aria-label={`${pack.name} theme`}
@@ -39,6 +39,7 @@ import { themePacks } from '../../lib/themes.ts';
       });
     }
     window.addEventListener('mp:theme', mark);
+    document.addEventListener('astro:before-swap', () => window.removeEventListener('mp:theme', mark), { once: true });
     mark();
   }
   document.addEventListener('astro:page-load', init);

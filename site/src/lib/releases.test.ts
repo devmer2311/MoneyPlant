@@ -1,69 +1,54 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getReleases, normalizeReleases } from './releases.ts';
-
-const gh = (over: Record<string, unknown>) => ({
-  tag_name: 'v1.0.0',
-  name: null,
-  published_at: '2026-01-01T00:00:00Z',
-  prerelease: false,
-  draft: false,
-  body_html: '',
-  html_url: 'https://github.com/devmer2311/MoneyPlant/releases/tag/v1.0.0',
-  assets: [],
-  ...over,
+import {afterEach,expect,it,vi} from 'vitest';
+import {normalizeReleases,latestRelease,fetchReleases,REPO} from './release-model';
+const gh=(tag='v1.0.0',extra={})=>({tag_name:tag,published_at:'2026-01-01T00:00:00Z',draft:false,prerelease:false,assets:[],...extra});
+const asset=(tag='v1.0.0',name='money-plant-v1.0.0+1.apk')=>({name,browser_download_url:`https://github.com/${REPO}/releases/download/${tag}/${encodeURIComponent(name)}`,size:123,download_count:2,digest:'sha256:'+'a'.repeat(64)});
+afterEach(()=>{vi.unstubAllGlobals();delete process.env.REQUIRE_FRESH_RELEASES;});
+it('sorts semantically, excludes drafts and prereleases from latest',()=>{
+ const r=normalizeReleases([gh('v1.9.0',{published_at:'2026-09-01'}),gh('v1.10.0'),gh('v3.0.0-rc.1'),gh('v4.0.0',{prerelease:true}),gh('v5.0.0',{draft:true})]);
+ expect(latestRelease(r)?.tag).toBe('v1.10.0');
+ expect(r).toHaveLength(4);
 });
-
-afterEach(() => vi.unstubAllGlobals());
-
-describe('normalizeReleases', () => {
-  it('excludes drafts, finds the versioned APK, and derives kind', async () => {
-    const releases = await normalizeReleases(
-      [
-        gh({
-          tag_name: 'v1.1.0',
-          published_at: '2026-02-01T00:00:00Z',
-          assets: [
-            { name: 'money-plant.apk', browser_download_url: 'u0', size: 1, download_count: 5 },
-            { name: 'money-plant-v1.1.0+3.apk', browser_download_url: 'u1', size: 9, download_count: 7 },
-            { name: 'money-plant-v1.1.0+3.apk.sha256', browser_download_url: 'u2', size: 1, download_count: 0 },
-          ],
-        }),
-        gh({ tag_name: 'v1.0.1-draft', draft: true }),
-        gh({ tag_name: 'v1.0.0' }),
-      ] as never[],
-      false,
-    );
-    expect(releases.map((r) => r.tag)).toEqual(['v1.1.0', 'v1.0.0']);
-    expect(releases[0]!.apk?.name).toBe('money-plant-v1.1.0+3.apk');
-    expect(releases[0]!.apk?.downloads).toBe(7);
-    expect(releases[0]!.kind).toBe('minor');
-    expect(releases[1]!.kind).toBe('major');
-  });
+it('selects one tag-matching universal asset and its own digest',()=>{
+ const r=normalizeReleases([gh('v1.0.0',{assets:[asset('v1.0.0','money-plant.apk'),asset('v1.0.0','money-plant-v0.9.0+1.apk'),asset()]})])[0]!;
+ expect(r.apk?.name).toBe('money-plant-v1.0.0+1.apk');
+ expect(r.sha256).toBe('a'.repeat(64));
 });
-
-describe('getReleases', () => {
-  it('merges paginated pages and falls back to the snapshot on failure', async () => {
-    // Page 1 has 100 releases, page 2 has 1 → 101 merged.
-    const page1 = Array.from({ length: 100 }, (_, i) =>
-      gh({ tag_name: `v1.0.${200 - i}`, published_at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z` }),
-    );
-    const page2 = [gh({ tag_name: 'v0.1.0' })];
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) => ({
-        ok: true,
-        json: async () => (new URL(String(url)).searchParams.get('page') === '1' ? page1 : page2),
-      })),
-    );
-    const releases = await getReleases();
-    expect(releases).toHaveLength(101);
-
-    // Cached module promise means the fallback needs a fresh module registry.
-    vi.resetModules();
-    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
-    const fresh = await import('./releases.ts');
-    const fallback = await fresh.getReleases();
-    expect(fallback.length).toBeGreaterThan(0);
-    expect(fallback[0]).toHaveProperty('tag');
-  });
+it.each([
+ [asset('v0.9.0')],
+ [{...asset(),browser_download_url:'https://evil.test/app.apk'}],
+ [asset('v1.0.0','money-plant-v1.0.0-arm64.apk')],
+ [asset(),asset('v1.0.0','money-plant-v1.0.0+2.apk')],
+ [{...asset(),size:0}],
+])('rejects mismatched, unsafe, architecture-specific or ambiguous assets',(...assets)=>{
+ expect(normalizeReleases([gh('v1.0.0',{assets})])[0]?.apk).toBeUndefined();
+});
+it('never silently offers an older APK as the newest version',()=>{
+ const r=normalizeReleases([gh('v1.1.0'),gh('v1.0.0',{assets:[asset()]})]);
+ expect(latestRelease(r)?.version).toBe('1.1.0');
+ expect(latestRelease(r)?.apk).toBeUndefined();
+});
+it('treats malformed metadata as unavailable and empty lists as empty',()=>{
+ expect(()=>normalizeReleases({message:'rate limit'})).toThrow();
+ expect(()=>normalizeReleases([gh('v1.0.0junk')])).toThrow();
+ expect(()=>normalizeReleases([gh('v1.0.0',{published_at:'bad'})])).toThrow();
+ expect(normalizeReleases([])).toEqual([]);
+});
+it('paginates, validates status and requests revalidation',async()=>{
+ const first=Array.from({length:100},(_,i)=>gh(`v1.0.${i}`));
+ const mock=vi.fn().mockResolvedValueOnce({ok:true,json:async()=>first}).mockResolvedValueOnce({ok:true,json:async()=>[gh('v2.0.0')]});
+ vi.stubGlobal('fetch',mock);
+ expect(await fetchReleases()).toHaveLength(101);
+ expect(mock.mock.calls[0]?.[1].cache).toBe('no-cache');
+ expect(mock.mock.calls[1]?.[0]).toContain('page=2');
+});
+it.each([403,404,429,500])('fails cleanly on HTTP %s',async status=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>({ok:false,status})));
+ await expect(fetchReleases()).rejects.toThrow();
+});
+it('uses the validated snapshot offline and fails production builds when freshness is required',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>{throw new Error('offline');}));
+ vi.resetModules();
+ expect((await (await import('./releases')).getReleases()).length).toBeGreaterThan(0);
+ vi.resetModules();process.env.REQUIRE_FRESH_RELEASES='1';
+ await expect((await import('./releases')).getReleases()).rejects.toThrow('offline');
 });

@@ -1,57 +1,34 @@
 ---
 import Base from '../layouts/Base.astro';
-import SplitCalculator from '../components/calc/SplitCalculator.tsx';
 import Hero from '../components/hero/Hero.astro';
-import InstallDrawer from '../components/hero/InstallDrawer.astro';
-import Faq from '../components/home/Faq.astro';
-import FinalCta from '../components/home/FinalCta.astro';
-import LatestReleaseCard from '../components/home/LatestReleaseCard.astro';
-import Privacy from '../components/home/Privacy.astro';
-import StatsMarquee from '../components/home/StatsMarquee.astro';
-import PunchIntro from '../components/intro/PunchIntro.astro';
 import Story from '../components/story/Story.astro';
-import LaserVault from '../components/vault/LaserVault.astro';
-import { getReleases, latestRelease, stableReleases, totalDownloads } from '../lib/releases.ts';
-
+import Privacy from '../components/home/Privacy.astro';
+import Faq from '../components/home/Faq.astro';
+import HowItWorks from '../components/home/HowItWorks.astro';
+import SplitCalculator from '../components/calc/SplitCalculator.tsx';
+import DownloadPanel from '../components/releases/DownloadPanel';
+import { getReleases } from '../lib/releases';
 const releases = await getReleases();
-const latest = latestRelease(releases);
-if (!latest) throw new Error('No published release found; cannot build the home page.');
-const updatedDaysAgo = Math.floor((Date.now() - new Date(latest.publishedAt).getTime()) / 86_400_000);
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
-
-<Base
-  title="Money Plant"
-  description="Grow your money. A private, offline-first expense tracker and bill splitter for Android. No account, no ads, no servers."
->
-  <PunchIntro />
-  <Hero latest={latest} />
-  <StatsMarquee downloads={totalDownloads(releases)} releases={stableReleases(releases).length} updatedDaysAgo={updatedDaysAgo} />
+<Base title="Money Plant — Private, Offline-First Personal Finance" description="Track expenses, budgets and local bill splits on Android. No mandatory account. Local backup and restore, with optional username sharing planned.">
+  <Hero releases={releases} />
+  <div class="trust-strip container-site" aria-label="Money Plant at a glance">
+    <span>🌱 No mandatory account</span><span>◎ Everyday tracking works offline</span><span>↗ Export your own backups</span>
+  </div>
   <Story />
-  <LaserVault />
-  <section class="container-site max-w-4xl">
-    <h2 class="m-0" style="font-size: clamp(2.2rem, 5vw, 3.6rem);">Try a split right here</h2>
-    <p class="mt-3 max-w-[55ch] text-ink-muted">
-      The same paise-exact maths the app uses, running in your browser. Not a mock.
-    </p>
-    <div class="mt-8">
-      <SplitCalculator client:visible />
-    </div>
-    <p class="mt-6 text-lg">
-      Now imagine this with UPI QR, PDF statements and reminders.
-      <a href="#seed-area" class="font-bold underline" style="color: var(--brand);">Download ↑</a>
-    </p>
-  </section>
   <Privacy />
-  <LatestReleaseCard release={latest} />
+  <HowItWorks kind="split" />
+  <HowItWorks kind="backup" />
+  <section class="container-site" id="try-split">
+    <div class="section-heading"><p class="eyebrow">A little preview</p><h2>One bill. A fair split.</h2><p>Try the app’s paise-exact split calculation here. This demo stays in your browser.</p></div>
+    <div class="calculator-wrap"><SplitCalculator client:visible /></div>
+  </section>
+  <section class="container-site" id="download">
+    <div class="section-heading"><p class="eyebrow">Ready when you are</p><h2>Plant it on your phone.</h2><p>The latest Android download and a clear account of what changed.</p></div>
+    <DownloadPanel releases={releases} base={base} expanded client:load />
+    <p class="text-ink-muted">New to APKs? <a class="text-link" href={`${base}/install`}>Follow the installation guide →</a></p>
+  </section>
   <Faq />
-  <FinalCta version={latest.version} />
-  <InstallDrawer sha256={latest.sha256} apkName={latest.apk?.name} />
+  <section class="container-site final-cta"><span aria-hidden="true">🌱</span><h2>A little clarity, every day.</h2><a class="button primary" href="#download">Get Money Plant for Android ↑</a></section>
 </Base>
-
-<script>
-  import { initLatestCheck } from '../lib/latest';
-  document.addEventListener('astro:page-load', () => {
-    const version = document.querySelector('[data-latest-version]')?.textContent?.replace(/^v/, '');
-    if (version) void initLatestCheck(version);
-  });
-</script>

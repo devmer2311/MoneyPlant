@@ -1,67 +1,65 @@
-name: Android release
+name: App version pipeline
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
-    inputs:
-      bump:
-        description: Version increment
-        required: true
-        default: patch
-        type: choice
-        options: [patch, minor, major]
+    branches: [dev, main]
+    paths: ['versions/app.yaml']
+  pull_request:
+    branches: [dev, main]
+    paths: ['versions/app.yaml']
+  workflow_dispatch: {}
 permissions:
-  contents: write
-  actions: write
+  contents: read
 concurrency:
-  group: production-release
+  group: app-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  release:
-    if: >-
-      ${{ github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'chore: bump version') }}
+  version:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.version.outputs.changed }}
+      version: ${{ steps.version.outputs.version }}
+      build: ${{ steps.version.outputs.build }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
-      # Resolve main AFTER the concurrency lock: queued releases must see the last version bump.
       - uses: actions/checkout@v4
         with:
-          ref: main
           fetch-depth: 0
-      - name: Avoid releasing the same production state twice
-        id: gate
+          persist-credentials: false
+      - name: Read version and compare with event base
+        id: version
         env:
-          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
-          if [[ "$EVENT" == "push" && "$(git log -1 --pretty=%s)" == "chore: bump version"* ]]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+          if [[ -z "$BASE" ]]; then BASE="$(git rev-parse HEAD^)"; fi
+          python3 tool/component_version.py app --base "$BASE" --output "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    if: needs.version.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-java@v4
-        if: steps.gate.outputs.skip == 'false'
         with:
           distribution: temurin
           java-version: '17'
       - uses: subosito/flutter-action@v2
-        if: steps.gate.outputs.skip == 'false'
         with:
           flutter-version: '3.47.2'
           channel: stable
           cache: true
-      - name: Calculate version from pubspec
-        if: steps.gate.outputs.skip == 'false'
-        id: version
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Require release notes
         env:
-          BUMP: ${{ inputs.bump || 'patch' }}
-        run: |
-          CURRENT_TAG="v$(sed -n 's/^version: \([^+]*\)+.*/\1/p' pubspec.yaml)"
-          if git rev-parse --verify "refs/tags/$CURRENT_TAG" >/dev/null 2>&1; then
-            python3 tool/bump_version.py "$BUMP" --output "$GITHUB_OUTPUT"
-          else
-            python3 tool/bump_version.py current --output "$GITHUB_OUTPUT"
-          fi
+          TAG: ${{ needs.version.outputs.tag }}
+        run: node site/scripts/release-notes.mjs "$TAG" release-notes.md
       - name: Configure release signing
-        if: steps.gate.outputs.skip == 'false'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
@@ -80,53 +78,71 @@ jobs:
               lines.append(f'{prop}={escape(os.environ[key])}')
           Path('android/key.properties').write_text('\n'.join(lines) + '\n')
           PY
-      - if: steps.gate.outputs.skip == 'false'
+      - name: Validate app
         run: |
           flutter pub get
           flutter analyze
           flutter test
-          python3 tool/test_version.py
-          flutter build apk --release --dart-define=MONEY_PLANT_WEBSITE_URL=https://moneyplantbydev.pages.dev
-      - name: Commit version and tag validated build
-        if: steps.gate.outputs.skip == 'false'
+          python3 tool/test_component_version.py
+          python3 tool/test_verify_release.py
+      - name: Build development APK
+        if: github.ref != 'refs/heads/main' || github.event_name == 'pull_request'
         env:
-          VERSION: ${{ steps.version.outputs.version }}
-          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+          BUILD: ${{ needs.version.outputs.build }}
+        run: flutter build apk --debug --build-name="$VERSION" --build-number="$BUILD"
+      - name: Build and verify signed production APK
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          BUILD: ${{ needs.version.outputs.build }}
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git fetch origin main
-          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed during validation. A queued release will build the newer commit.'; exit 1; }
-          if git rev-parse "$TAG" >/dev/null 2>&1; then echo 'Tag already exists; refusing to overwrite it.'; exit 1; fi
-          git add pubspec.yaml
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: bump version to $VERSION [skip ci]"
-          fi
-          git tag "$TAG"
-          git push --atomic origin HEAD:main "$TAG"
-      - name: Publish universal APK
-        if: steps.gate.outputs.skip == 'false'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
-          TAG: ${{ steps.version.outputs.tag }}
-        run: |
-          cp build/app/outputs/flutter-apk/app-release.apk "money-plant-v$VERSION.apk"
-          cp build/app/outputs/flutter-apk/app-release.apk money-plant.apk
-          sha256sum "money-plant-v$VERSION.apk" > "money-plant-v$VERSION.apk.sha256"
-          gh release create "$TAG" "money-plant-v$VERSION.apk" money-plant.apk "money-plant-v$VERSION.apk.sha256" --verify-tag --title "Money Plant $TAG" --generate-notes
-      - name: Trigger site deploy
-        if: steps.gate.outputs.skip == 'false'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        # Releases created with GITHUB_TOKEN don't fire `on: release`, so dispatch the site workflow directly.
-        run: gh workflow run site.yml --ref main || echo 'site.yml not found yet; skipping'
+          flutter build apk --release --build-name="$VERSION" --build-number="$BUILD" --dart-define=MONEY_PLANT_WEBSITE_URL=https://moneyplantbydev.pages.dev
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)"
+          test -n "$AAPT"
+          python3 tool/verify_release.py build/app/outputs/flutter-apk/app-release.apk "$VERSION+$BUILD" --aapt "$AAPT"
       - uses: actions/upload-artifact@v4
-        if: always() && steps.gate.outputs.skip == 'false'
         with:
-          name: release-build
-          path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: ignore
+          name: app-${{ needs.version.outputs.version }}-${{ github.sha }}
+          path: |
+            build/app/outputs/flutter-apk/*.apk
+            release-notes.md
+          if-no-files-found: error
+          retention-days: 14
       - name: Clean signing material
         if: always()
         run: rm -f android/key.properties android/app/release.jks
+
+  release:
+    needs: [version, build]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.version.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-${{ needs.version.outputs.version }}-${{ github.sha }}
+          path: validated
+      - name: Publish only verified bytes from this main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+          BUILD: ${{ needs.version.outputs.build }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          APK="validated/build/app/outputs/flutter-apk/app-release.apk"
+          test -s "$APK"
+          cp "$APK" "money-plant-v$VERSION+$BUILD.apk"
+          cp "$APK" money-plant.apk
+          sha256sum "money-plant-v$VERSION+$BUILD.apk" > "money-plant-v$VERSION+$BUILD.apk.sha256"
+          gh release create "$TAG" "money-plant-v$VERSION+$BUILD.apk" money-plant.apk "money-plant-v$VERSION+$BUILD.apk.sha256" --target "$GITHUB_SHA" --title "Money Plant $TAG" --draft --notes-file validated/release-notes.md
+          mkdir release-check
+          gh release download "$TAG" --dir release-check --pattern '*.apk' --pattern '*.sha256'
+          (cd release-check && sha256sum --check "money-plant-v$VERSION+$BUILD.apk.sha256")
+          cmp "release-check/money-plant-v$VERSION+$BUILD.apk" release-check/money-plant.apk
+          cmp "release-check/money-plant-v$VERSION+$BUILD.apk" "$APK"
+          gh release edit "$TAG" --draft=false
