@@ -1,25 +1,12 @@
 import 'garden_operations.dart';
+import 'garden_repository.dart';
 export 'garden_operations.dart';
+export 'garden_repository.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/models.dart';
-
-abstract class GardenRepository {
-  Future<String?> read();
-  Future<void> write(String value);
-}
-
-class LocalGardenRepository implements GardenRepository {
-  final SharedPreferencesAsync preferences = SharedPreferencesAsync();
-  @override
-  Future<String?> read() => preferences.getString('money_plant.garden.v1');
-  @override
-  Future<void> write(String value) =>
-      preferences.setString('money_plant.garden.v1', value);
-}
 
 final gardenProvider = ChangeNotifierProvider<GardenStore>(
   (ref) => throw StateError('Initialize the garden before opening the app.'),

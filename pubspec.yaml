@@ -32,6 +32,10 @@ dependencies:
   url_launcher: 6.3.2
   workmanager: 0.10.10
   pub_semver: 2.2.0
+  sqflite: ^2.4.4
+  sqflite_common: ^2.5.13
+  sqflite_common_ffi: ^2.4.3
+  sqflite_common_ffi_web: ^1.2.0
 
 dev_dependencies:
   flutter_test:

@@ -11,11 +11,17 @@ import 'app.dart';
 import 'data/garden_store.dart';
 import 'data/reminder_store.dart';
 import 'data/reminder_gateway.dart';
+import 'data/sqlite_factory.dart';
+import 'data/sqlite_garden_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final store = GardenStore(LocalGardenRepository());
+  SqliteGardenRepository? repository;
   try {
+    final (factory, path) = await gardenDatabaseLocation();
+    repository = await SqliteGardenRepository.open(factory, path);
+    await repository.initializeFromLegacy(LocalGardenRepository());
+    final store = GardenStore(repository);
     await store.load();
     await store.runRecurring();
     final reminders = ReminderStore(
@@ -36,7 +42,9 @@ Future<void> main() async {
       ),
     );
     unawaited(updates.start());
-  } catch (_) {
+  } catch (error, stack) {
+    debugPrint('Local startup failed (${error.runtimeType}).\n$stack');
+    await repository?.close();
     runApp(
       MaterialApp(
         home: Scaffold(

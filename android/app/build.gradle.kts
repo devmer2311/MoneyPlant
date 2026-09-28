@@ -47,6 +47,10 @@ android {
         }
     }
     buildTypes {
+        getByName("debug") {
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+        }
         release {
             // Local builds can use a development key. CI requires a stable release key.
             signingConfig = signingConfigs.getByName(if (signingFile.exists()) "release" else "debug")
