@@ -12,6 +12,7 @@ it('publishes the same authored notes the website consumes',()=>{
   const text=readFileSync(file,'utf8');
   expect(parseSections(text).new).toEqual(['Export your ledger as a PDF, with preset dates or a custom date range.']);
   expect(text).not.toContain('Full Changelog');
+  expect(()=>execFileSync(process.execPath,['scripts/release-notes.mjs','v2.1.0-beta.5',file],{stdio:'pipe'})).toThrow(/Write human release notes/);
   expect(()=>execFileSync(process.execPath,['scripts/release-notes.mjs','v99.0.0',file],{stdio:'pipe'})).toThrow();
  }finally{try{unlinkSync(file);}finally{rmdirSync(dir);}}
 });

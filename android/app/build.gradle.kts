@@ -24,6 +24,7 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "app.moneyplant.money_plant"
+        manifestPlaceholders["appLabel"] = "Money Plant"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -52,6 +53,10 @@ android {
             versionNameSuffix = "-dev"
         }
         release {
+            if (providers.environmentVariable("MONEY_PLANT_CHANNEL").orNull == "beta") {
+                applicationIdSuffix = ".beta"
+                manifestPlaceholders["appLabel"] = "Money Plant Beta"
+            }
             // Local builds can use a development key. CI requires a stable release key.
             signingConfig = signingConfigs.getByName(if (signingFile.exists()) "release" else "debug")
         }

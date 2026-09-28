@@ -49,7 +49,7 @@ App version changes in `versions/app.yaml` trigger the Android pipeline. Prepare
 - `ANDROID_KEY_PASSWORD`
 - `ANDROID_KEY_ALIAS`
 
-Dev produces a debug APK artifact with a separate application ID. Only main signs and publishes a production release. Website builds/deployment are independently gated by `versions/site.yaml`. CI never increments versions or commits files. See [the pipeline guide](PIPELINE.md) for the complete workflow. Android device testing is separate from automated checks.
+Dev produces a debug APK artifact with a separate application ID. Beta signs and publishes prereleases as a separate Money Plant Beta app; only main publishes stable production releases. Website builds/deployment are independently gated by `versions/site.yaml`. Promotions support dev → beta, dev → main and beta → main. CI never increments versions or commits files. See [the pipeline guide](PIPELINE.md) for the complete workflow. Android device testing is separate from automated checks.
 
 ---
 

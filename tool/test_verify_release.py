@@ -9,6 +9,11 @@ class VerifyReleaseTest(unittest.TestCase):
                 verify_badging(text, expected)
         with self.assertRaises(ValueError):
             verify_badging(text.replace("app.moneyplant.money_plant", "other.app"), "2.0.1+4")
+    def test_beta_package_and_version(self):
+        text = "package: name='app.moneyplant.money_plant.beta' versionCode='5' versionName='2.1.0-beta.5'"
+        self.assertEqual(verify_badging(text, '2.1.0-beta.5+5', 'app.moneyplant.money_plant.beta')['versionCode'], 5)
+        with self.assertRaises(ValueError):
+            verify_badging(text, '2.1.0-beta.5+5')
     def test_invalid_metadata(self):
         with self.assertRaises(ValueError):
             verify_badging("", "2.0.1+4")

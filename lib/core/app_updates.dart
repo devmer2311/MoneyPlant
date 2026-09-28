@@ -1,5 +1,8 @@
 import 'package:pub_semver/pub_semver.dart';
 
+const betaUpdates =
+    String.fromEnvironment('MONEY_PLANT_RELEASE_CHANNEL') == 'beta';
+
 const releasesUrl = 'https://github.com/devmer2311/MoneyPlant/releases';
 const releasesApi =
     'https://api.github.com/repos/devmer2311/MoneyPlant/releases?per_page=30';
@@ -43,12 +46,18 @@ class AppRelease {
   final Uri? apk;
   const AppRelease(this.version, this.page, this.apk);
 
-  static AppRelease? parse(Map<String, dynamic> json) {
-    if (json['draft'] == true || json['prerelease'] == true) return null;
+  static AppRelease? parse(
+    Map<String, dynamic> json, {
+    bool beta = betaUpdates,
+  }) {
+    if (json['draft'] == true) return null;
     final tag = json['tag_name'];
     final parsed = tag is String ? appVersion(tag) : null;
     final page = Uri.tryParse(json['html_url']?.toString() ?? '');
-    if (parsed == null || parsed.isPreRelease || !_releaseUrl(page, 'tag/')) {
+    if (parsed == null || !_releaseUrl(page, 'tag/')) return null;
+    if (beta
+        ? !RegExp(r'^\d+\.\d+\.\d+-beta\.[1-9]\d*$').hasMatch(parsed.toString())
+        : (json['prerelease'] == true || parsed.isPreRelease)) {
       return null;
     }
     Uri? apk;
@@ -77,6 +86,7 @@ class AppRelease {
 
   Map<String, dynamic> toJson() => {
     'tag_name': version,
+    'prerelease': appVersion(version)?.isPreRelease ?? false,
     'html_url': page.toString(),
     'assets': [
       if (apk != null)
@@ -85,13 +95,17 @@ class AppRelease {
   };
 }
 
-AppRelease? newerRelease(dynamic json, String installed) {
+AppRelease? newerRelease(
+  dynamic json,
+  String installed, {
+  bool beta = betaUpdates,
+}) {
   final current = appVersion(installed);
   if (current == null || json is! List) return null;
   final releases =
       json
           .whereType<Map<String, dynamic>>()
-          .map(AppRelease.parse)
+          .map((r) => AppRelease.parse(r, beta: beta))
           .whereType<AppRelease>()
           .where((r) => appVersion(r.version)! > current)
           .toList()

@@ -1,10 +1,10 @@
 name: App version pipeline
 on:
   push:
-    branches: [dev, main]
+    branches: [dev, beta, main]
     paths: ['versions/app.yaml']
   pull_request:
-    branches: [dev, main]
+    branches: [dev, beta, main]
     paths: ['versions/app.yaml']
   workflow_dispatch: {}
 permissions:
@@ -14,12 +14,14 @@ concurrency:
   cancel-in-progress: false
 jobs:
   version:
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.version.outputs.changed }}
       version: ${{ steps.version.outputs.version }}
       build: ${{ steps.version.outputs.build }}
+      channel: ${{ steps.version.outputs.channel }}
+      package: ${{ steps.version.outputs.package }}
       tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
@@ -59,7 +61,7 @@ jobs:
           TAG: ${{ needs.version.outputs.tag }}
         run: node site/scripts/release-notes.mjs "$TAG" release-notes.md
       - name: Configure release signing
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta') && github.event_name != 'pull_request'
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
@@ -86,21 +88,27 @@ jobs:
           python3 tool/test_component_version.py
           python3 tool/test_verify_release.py
       - name: Build development APK
-        if: github.ref != 'refs/heads/main' || github.event_name == 'pull_request'
+        if: (github.ref != 'refs/heads/main' && github.ref != 'refs/heads/beta') || github.event_name == 'pull_request'
         env:
           VERSION: ${{ needs.version.outputs.version }}
           BUILD: ${{ needs.version.outputs.build }}
+          MONEY_PLANT_CHANNEL: ${{ needs.version.outputs.channel }}
+          PACKAGE: ${{ needs.version.outputs.package }}
         run: flutter build apk --debug --build-name="$VERSION" --build-number="$BUILD"
-      - name: Build and verify signed production APK
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      - name: Build and verify signed channel APK
+        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta') && github.event_name != 'pull_request'
         env:
           VERSION: ${{ needs.version.outputs.version }}
           BUILD: ${{ needs.version.outputs.build }}
+          MONEY_PLANT_CHANNEL: ${{ needs.version.outputs.channel }}
+          PACKAGE: ${{ needs.version.outputs.package }}
         run: |
-          flutter build apk --release --build-name="$VERSION" --build-number="$BUILD" --dart-define=MONEY_PLANT_WEBSITE_URL=https://moneyplantbydev.pages.dev
+          WEBSITE="https://moneyplantbydev.pages.dev"
+          if [[ "$MONEY_PLANT_CHANNEL" == "beta" ]]; then WEBSITE="https://github.com/devmer2311/MoneyPlant/releases"; fi
+          flutter build apk --release --build-name="$VERSION" --build-number="$BUILD" --dart-define=MONEY_PLANT_RELEASE_CHANNEL="$MONEY_PLANT_CHANNEL" --dart-define=MONEY_PLANT_WEBSITE_URL="$WEBSITE"
           AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)"
           test -n "$AAPT"
-          python3 tool/verify_release.py build/app/outputs/flutter-apk/app-release.apk "$VERSION+$BUILD" --aapt "$AAPT"
+          python3 tool/verify_release.py build/app/outputs/flutter-apk/app-release.apk "$VERSION+$BUILD" --aapt "$AAPT" --package "$PACKAGE"
       - uses: actions/upload-artifact@v4
         with:
           name: app-${{ needs.version.outputs.version }}-${{ github.sha }}
@@ -115,7 +123,7 @@ jobs:
 
   release:
     needs: [version, build]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.version.outputs.changed == 'true'
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta') && github.event_name != 'pull_request' && needs.version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -127,11 +135,13 @@ jobs:
         with:
           name: app-${{ needs.version.outputs.version }}-${{ github.sha }}
           path: validated
-      - name: Publish only verified bytes from this main commit
+      - name: Publish only verified bytes from this channel commit
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.version.outputs.version }}
           BUILD: ${{ needs.version.outputs.build }}
+          MONEY_PLANT_CHANNEL: ${{ needs.version.outputs.channel }}
+          PACKAGE: ${{ needs.version.outputs.package }}
           TAG: ${{ needs.version.outputs.tag }}
         run: |
           APK="validated/build/app/outputs/flutter-apk/app-release.apk"
@@ -139,10 +149,12 @@ jobs:
           cp "$APK" "money-plant-v$VERSION+$BUILD.apk"
           cp "$APK" money-plant.apk
           sha256sum "money-plant-v$VERSION+$BUILD.apk" > "money-plant-v$VERSION+$BUILD.apk.sha256"
-          gh release create "$TAG" "money-plant-v$VERSION+$BUILD.apk" money-plant.apk "money-plant-v$VERSION+$BUILD.apk.sha256" --target "$GITHUB_SHA" --title "Money Plant $TAG" --draft --notes-file validated/release-notes.md
+          RELEASE_FLAGS=()
+          if [[ "$MONEY_PLANT_CHANNEL" == "beta" ]]; then RELEASE_FLAGS+=(--prerelease --latest=false); fi
+          gh release create "$TAG" "money-plant-v$VERSION+$BUILD.apk" money-plant.apk "money-plant-v$VERSION+$BUILD.apk.sha256" --target "$GITHUB_SHA" --title "Money Plant $TAG" --draft "${RELEASE_FLAGS[@]}" --notes-file validated/release-notes.md
           mkdir release-check
           gh release download "$TAG" --dir release-check --pattern '*.apk' --pattern '*.sha256'
           (cd release-check && sha256sum --check "money-plant-v$VERSION+$BUILD.apk.sha256")
           cmp "release-check/money-plant-v$VERSION+$BUILD.apk" release-check/money-plant.apk
           cmp "release-check/money-plant-v$VERSION+$BUILD.apk" "$APK"
-          gh release edit "$TAG" --draft=false
+          gh release edit "$TAG" --draft=false "${RELEASE_FLAGS[@]}"

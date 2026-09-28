@@ -49,7 +49,7 @@ Existing v1.0.1 / v2.0.0 / v2.0.1 notes were reconstructed from repository sourc
 
 ## Publishing a future Android release
 
-Prepare the app version in `versions/app.yaml` on `dev`, synchronize pubspec with `python tool/component_version.py app --sync-pubspec`, and add matching human notes. Dev builds a debug APK artifact. Merge into main to build, sign, verify and publish a production APK. No workflow bumps versions or commits files.
+Prepare the app version in `versions/app.yaml` on `dev`, synchronize pubspec with `python tool/component_version.py app --sync-pubspec`, and add matching human notes. Dev builds a debug APK artifact. Merge into beta to publish a signed prerelease, or promote dev/beta into main to publish a stable APK. Beta release notes use the exact vX.Y.Z-beta.BUILD tag. No workflow bumps versions or commits files.
 
 Website builds are independently gated by `versions/site.yaml`. Dev produces a static artifact; main deploys it. App publication does not dispatch a site build. Browser release panels discover new releases, while static release details and RSS require a site version bump/deployment.
 
